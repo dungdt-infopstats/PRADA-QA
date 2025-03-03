@@ -4,6 +4,7 @@ import yaml
 import pandas as pd
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
 
 
 def load_config(yaml_path):
@@ -14,6 +15,28 @@ def load_config(yaml_path):
             print(exc)
             return {}
 
+def load_experiment_config(config_dir = "config\experiment.yaml"):
+    experiment_config_dir = load_config(config_dir)['dir']
+    experiment_config = load_config(experiment_config_dir)
+    return experiment_config_dir, experiment_config
+
+
+def save_config(yaml_path, yaml_data):
+    yaml_file = yaml.dump(yaml_data)
+    with open(yaml_path, "w", encoding="utf-8") as file:
+        file.write(yaml_file)
+
+def create_folder(path):
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def init_ques_folder(path):
+    files = ['web.jsonl', 'qa.jsonl', 'product_qa.jsonl', 'product_sql.jsonl']
+    for file in files:
+        file_dir = os.path.join(path, file)
+        with open(file_dir, 'w'):
+            pass
+            
 
 def get_response(prompt, model="gpt-4o-mini"):
     response = client.chat.completions.create(
