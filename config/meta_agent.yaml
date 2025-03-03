@@ -1,0 +1,3 @@
+model-id: gpt-4o-mini
+model-type: LiteLLMModel
+headless: true

@@ -1,0 +1,7 @@
+agent:
+  - web
+  
+cur: hehe
+model: gpt-4o-mini
+name: web-only
+part: 9

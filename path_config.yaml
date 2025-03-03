@@ -1,0 +1,16 @@
+meta_agent: "./config/meta_agent.yaml"
+product_agent: "./config/product_agent.yaml"
+web_agent: "./config/web_agent.yaml"
+prompts:
+  code_agent: "/prompts/code_agent.yaml"
+  meta_agent: "/prompts/meta_agent.yaml"
+  toolcalling_agent: "/prompts/toolcalling_agent.yaml"
+  helium_instructions: "/prompts/helium_instructions.yaml"
+data:
+  acs_meta: "/data/acs_meta.yaml"
+  acs_pqa: "/data/acs_pqa.yaml"
+  acs_review: "/data/acs_review.yaml"
+  full_pqa: "data/amazon_pqa_accessories.json"
+  review_db: "D:/AI_CODE/MASEE/data/acs_review.db"
+  q_faiss_index: "D:/AI_CODE/MASEE/data/q_faiss_index"
+  d_faiss_index: "D:/AI_CODE/MASEE/data/d_faiss_index"

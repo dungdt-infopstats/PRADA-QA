@@ -1,0 +1,11 @@
+.env
+__pycache__/
+data
+masee
+Chinook.db
+log
+tests
+*.ipynb
+*.jsonl
+*.json
+*.txt
