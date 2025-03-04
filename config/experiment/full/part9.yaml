@@ -1,0 +1,10 @@
+agent:
+- web
+- qa
+- product
+- rerank
+cur_ques: 
+datetime: 
+model: deepseek/deepseek-chat
+name: full
+part: 9

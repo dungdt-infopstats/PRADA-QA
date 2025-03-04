@@ -32,6 +32,8 @@ from sentence_transformers import CrossEncoder
 import json
 import os
 
+from utils import load_experiment_config, write_json
+
 
 def load_config(yaml_path):
     with open(yaml_path, "r") as stream:
@@ -42,19 +44,18 @@ def load_config(yaml_path):
             return {}
 
 
-
 q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
 d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
 
-qa_log_dir = "D:/AI_CODE/MASEE/log/qa_log.jsonl"
-p_log_dir = "D:/AI_CODE/MASEE/log/p_log.jsonl"
 
+experiment_config_dir, experiment_config = load_experiment_config()
+
+dir_qa = os.path.abspath(os.path.join(
+    "log", experiment_config['name'], "qa.jsonl"))
+dir_pqa = os.path.abspath(os.path.join(
+    "log", experiment_config['name'], "product_qa.jsonl"))
 reranker = CrossEncoder(
     "jinaai/jina-reranker-v1-turbo-en", trust_remote_code=True)
-
-def write_json(data, path):
-    with open(path, "a", encoding="utf-8") as file:
-        file.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 class QAVectorSearchCalling(Tool):
     name = "qa_vector"
@@ -67,11 +68,12 @@ class QAVectorSearchCalling(Tool):
     def forward(self, query: str, k: int = 50) -> str:
         ans = q_db.similarity_search(query, k)
         out = {
+            "type": "QA-Embedding-Retrieve",
             "query": query,
-            "retrieve": ans.__str__(),
+            "retrieve": [value.__str__() for value in ans],
             "top_k": k,
         }
-        write_json(out, qa_log_dir)
+        write_json(out, dir_qa)
         return ans.__str__()
 
 
@@ -94,15 +96,18 @@ class PVectorSearchCalling(Tool):
             query, ans_str, return_documents=True, top_k=rank)
         print(f"reranker_res: {reranker_res}")
         out = {
+            "type": "P-Embedding-Retrieve",
             "query": query,
             "retrieve": ans_str,
-            "rerank": reranker_res.__str__(),
+            "rerank": [value.__str__() for value in reranker_res],
             "top_k": k,
             "rank": rank,
         }
-        write_json(out, p_log_dir)
-        return reranker_res.__str__()
-        # return ans.__str__()
+        write_json(out, dir_pqa)
+        if ("rerank" in experiment_config['agent']):
+            return reranker_res.__str__()
+        return ans.__str__()
+
 
 retriever_instructions = """
 \n

@@ -36,7 +36,11 @@ def init_ques_folder(path):
         file_dir = os.path.join(path, file)
         with open(file_dir, 'w'):
             pass
-            
+
+
+def write_json(data, path):
+    with open(path, "a", encoding="utf-8") as file:
+        file.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 def get_response(prompt, model="gpt-4o-mini"):
     response = client.chat.completions.create(

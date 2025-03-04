@@ -20,6 +20,8 @@ from langchain_openai import ChatOpenAI
 from smolagents.cli import load_model
 from agents.vectorstore import create_vector_store, load_vector_store, save_vector_store
 
+from utils import write_json, load_experiment_config
+import os
 
 def load_config(yaml_path):
     with open(yaml_path, "r") as stream:
@@ -29,6 +31,10 @@ def load_config(yaml_path):
             print(exc)
             return {}
 
+experiment_config_dir, experiment_config = load_experiment_config()
+
+dir_p = os.path.abspath(os.path.join(
+    "log", experiment_config['name'], "product_sql.jsonl"))
 
 rv_db = SQLDatabase.from_uri("sqlite:///D:/AI_CODE/MASEE/data/acs_review.db")
 sql_agent_rv = create_sql_agent(llm=ChatOpenAI(model="gpt-4o-mini", temperature=0), db=rv_db,agent_type="openai-tools", verbose = True)
@@ -48,7 +54,14 @@ class RVSQLAgentCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str) -> str:
-        return sql_agent_rv.invoke(query)
+        result = sql_agent_rv.invoke(query)
+        out = {
+            "type": "P-SQL",
+            "query": query,
+            "result": result
+        }
+        write_json(out, dir_p)
+        return result
     
 
 

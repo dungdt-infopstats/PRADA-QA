@@ -49,7 +49,8 @@ part = experiment_config['part']
 log_dir = "log"
 
 # create name for experiment folder
-experiment_name = experiment_config['name'] + experiment_config['datetime']
+experiment_name = experiment_config['name'] + "_" + \
+    experiment_config['model'] + experiment_config['datetime']
 
 # create folder
 experiment_folder = create_folder(os.path.join(log_dir, experiment_name))
@@ -149,7 +150,8 @@ def evaluation(
             save_config(experiment_config_dir, experiment_config)
 
             # create question folder
-            path = os.path.join(experiment_folder, experiment_config['cur_ques'])
+            path = os.path.join(experiment_folder,
+                                experiment_config['cur_ques'])
             ques_folder = create_folder(path)
 
             # create file for question folder
@@ -189,7 +191,6 @@ def main():
     prod_agent = product_agent()
     meta_agent_config = load_config(config['meta_agent'])
     # cut prod agent
-
     meta_agent = CodeAgent(
         tools=[PVectorSearchCalling(), QAVectorSearchCalling()],
         model=load_model(

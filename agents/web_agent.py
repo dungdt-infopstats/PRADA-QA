@@ -19,6 +19,16 @@ from smolagents.monitoring import (
     AgentLogger,
     LogLevel,
 )
+
+import os
+from utils import load_experiment_config, write_json
+
+experiment_config_dir, experiment_config = load_experiment_config()
+
+dir_p = os.path.abspath(os.path.join(
+    "log", experiment_config['name'], "web.jsonl"))
+
+
 from collections import deque
 
 github_request = """
@@ -59,7 +69,6 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-
 def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
     sleep(1.0)  # Let JavaScript animations happen before taking the screenshot
     driver = helium.get_driver()
@@ -78,6 +87,11 @@ def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
     memory_step.observations = (
         url_info if memory_step.observations is None else memory_step.observations + "\n" + url_info
     )
+    out = {
+            "type": "web",
+            "result": memory_step.__str__()
+        }
+    write_json(out, dir_p)
     return
 
 
