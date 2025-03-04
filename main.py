@@ -185,18 +185,18 @@ def main():
     # )
 
     web_agent = web_ag(config)
-    qa_agent = get_qa_agent()
+    # qa_agent = get_qa_agent()
     prod_agent = product_agent()
     meta_agent_config = load_config(config['meta_agent'])
     # cut prod agent
+
     meta_agent = CodeAgent(
         tools=[PVectorSearchCalling(), QAVectorSearchCalling()],
         model=load_model(
-            meta_agent_config['model-type'], meta_agent_config['model-id']),
+            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api']),
         managed_agents=[web_agent],
         additional_authorized_imports=['time', 'numpy', 'pandas']
     )
-
     question_df = pd.read_csv(args.question_df_path)
     prediction = evaluation(question_df, meta_agent, save_path=args.save_path)
 

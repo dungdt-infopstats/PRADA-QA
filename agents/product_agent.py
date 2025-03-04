@@ -55,7 +55,7 @@ class RVSQLAgentCalling(Tool):
 def initialize_product_agent(config: Dict[str, Any]) -> CodeAgent:
     product_agent = ToolCallingAgent(
         tools=[RVSQLAgentCalling()],
-        model=load_model(config['model-type'], config['model-id']),
+        model=load_model(config['model-type'], config['model-id'], config['model-api']),
     )
     return product_agent
 

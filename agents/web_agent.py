@@ -243,7 +243,7 @@ def initialize_driver(config: dict):
 
 def initialize_agent(config: dict):
     """Initialize the CodeAgent with the specified model."""
-    model = load_model(config["model-type"], config["model-id"])
+    model = load_model(config["model-type"], config["model-id"], config["model-api"])
     return WebAgent(
         tools=[DuckDuckGoSearchTool(), go_back, close_popups, search_item_ctrl_f],
         model=model,
