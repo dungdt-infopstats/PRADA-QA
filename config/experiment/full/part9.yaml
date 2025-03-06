@@ -3,8 +3,8 @@ agent:
 - qa
 - product
 - rerank
-cur_ques: 
-datetime: 
-model: deepseek/deepseek-chat
+cur_ques: Tx37JSEF7SDMJ6G
+datetime: _2025-03-04 17-25-54
+model: deepseek
 name: full
 part: 9

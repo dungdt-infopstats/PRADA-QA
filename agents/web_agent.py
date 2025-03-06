@@ -23,11 +23,6 @@ from smolagents.monitoring import (
 import os
 from utils import load_experiment_config, write_json
 
-experiment_config_dir, experiment_config = load_experiment_config()
-
-dir_p = os.path.abspath(os.path.join(
-    "log", experiment_config['name'], "web.jsonl"))
-
 
 from collections import deque
 
@@ -42,7 +37,8 @@ Please navigate to https://en.wikipedia.org/wiki/Chicago and give me a sentence 
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Run a web browser automation script with a specified model.")
+    parser = argparse.ArgumentParser(
+        description="Run a web browser automation script with a specified model.")
     parser.add_argument(
         "prompt",
         type=str,
@@ -69,18 +65,25 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+
 def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
+    experiment_config_dir, experiment_config = load_experiment_config()
+    experiment_name = experiment_config['name'] + "_" + \
+        experiment_config['model'] + experiment_config['datetime']
+    dir_w = os.path.abspath(os.path.join("log", experiment_name))
     sleep(1.0)  # Let JavaScript animations happen before taking the screenshot
     driver = helium.get_driver()
     current_step = memory_step.step_number
     if driver is not None:
-        for previous_memory_step in agent.memory.steps:  # Remove previous screenshots from logs for lean processing
+        # Remove previous screenshots from logs for lean processing
+        for previous_memory_step in agent.memory.steps:
             if isinstance(previous_memory_step, ActionStep) and previous_memory_step.step_number <= current_step - 2:
                 previous_memory_step.observations_images = None
         png_bytes = driver.get_screenshot_as_png()
         image = Image.open(BytesIO(png_bytes))
         print(f"Captured a browser screenshot: {image.size} pixels")
-        memory_step.observations_images = [image.copy()]  # Create a copy to ensure it persists, important!
+        # Create a copy to ensure it persists, important!
+        memory_step.observations_images = [image.copy()]
 
     # Update observations with current URL
     url_info = f"Current url: {driver.current_url}"
@@ -88,10 +91,11 @@ def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
         url_info if memory_step.observations is None else memory_step.observations + "\n" + url_info
     )
     out = {
-            "type": "web",
-            "result": memory_step.__str__()
-        }
-    write_json(out, dir_p)
+        "type": "web",
+        "result": memory_step.__str__()
+    }
+    write_json(out, os.path.join(
+        dir_w, experiment_config['cur_ques'], 'web.jsonl'))
     return
 
 
@@ -103,9 +107,11 @@ def search_item_ctrl_f(text: str, nth_result: int = 1) -> str:
         text: The text to search for
         nth_result: Which occurrence to jump to (default: 1)
     """
-    elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{text}')]")
+    elements = driver.find_elements(
+        By.XPATH, f"//*[contains(text(), '{text}')]")
     if nth_result > len(elements):
-        raise Exception(f"Match n°{nth_result} not found (only {len(elements)} matches found)")
+        raise Exception(
+            f"Match n°{nth_result} not found (only {len(elements)} matches found)")
     result = f"Found {len(elements)} matches for '{text}'."
     elem = elements[nth_result - 1]
     driver.execute_script("arguments[0].scrollIntoView(true);", elem)
@@ -189,6 +195,8 @@ But beware that the screenshot will only be taken at the end of the whole action
 Don't kill the browser.
 When you have modals or cookie banners on screen, you should get rid of them before you can click anything else.
 """
+
+
 class WebAgent(CodeAgent):
     def run(
         self,
@@ -224,7 +232,8 @@ You have been provided with these additional arguments, that you can access usin
 {str(additional_args)}."""
 
         self.system_prompt = self.initialize_system_prompt()
-        self.memory.system_prompt = SystemPromptStep(system_prompt=self.system_prompt)
+        self.memory.system_prompt = SystemPromptStep(
+            system_prompt=self.system_prompt)
         if reset:
             self.memory.reset()
             self.monitor.reset()
@@ -244,6 +253,7 @@ You have been provided with these additional arguments, that you can access usin
         # Outputs are returned only at the end as a string. We only look at the last step
         return deque(self._run(task=self.task, images=images), maxlen=1)[0]
 
+
 def initialize_driver(config: dict):
     """Initialize the Selenium WebDriver."""
     chrome_options = webdriver.ChromeOptions()
@@ -251,15 +261,17 @@ def initialize_driver(config: dict):
     chrome_options.add_argument("--window-size=1000,1350")
     chrome_options.add_argument("--disable-pdf-viewer")
     chrome_options.add_argument("--window-position=0,0")
-    return helium.start_chrome(headless= config["headless"], 
-                        options=chrome_options)
+    return helium.start_chrome(headless=config["headless"],
+                               options=chrome_options)
 
 
 def initialize_agent(config: dict):
     """Initialize the CodeAgent with the specified model."""
-    model = load_model(config["model-type"], config["model-id"], config["model-api"])
+    model = load_model(config["model-type"],
+                       config["model-id"], config["model-api"])
     return WebAgent(
-        tools=[DuckDuckGoSearchTool(), go_back, close_popups, search_item_ctrl_f],
+        tools=[DuckDuckGoSearchTool(), go_back, close_popups,
+               search_item_ctrl_f],
         model=model,
         additional_authorized_imports=["helium"],
         step_callbacks=[save_screenshot],
@@ -270,6 +282,7 @@ def initialize_agent(config: dict):
         Please only use this agent when other methods failed, because it's extremely resource-intensive.
         """,
     )
+
 
 def main():
     # Load environment variables

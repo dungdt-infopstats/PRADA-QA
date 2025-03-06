@@ -47,15 +47,9 @@ def load_config(yaml_path):
 q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
 d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
 
-
-experiment_config_dir, experiment_config = load_experiment_config()
-
-dir_qa = os.path.abspath(os.path.join(
-    "log", experiment_config['name'], "qa.jsonl"))
-dir_pqa = os.path.abspath(os.path.join(
-    "log", experiment_config['name'], "product_qa.jsonl"))
 reranker = CrossEncoder(
     "jinaai/jina-reranker-v1-turbo-en", trust_remote_code=True)
+
 
 class QAVectorSearchCalling(Tool):
     name = "qa_vector"
@@ -66,6 +60,10 @@ class QAVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 50) -> str:
+        experiment_config_dir, experiment_config = load_experiment_config()
+        experiment_name = experiment_config['name'] + "_" + \
+            experiment_config['model'] + experiment_config['datetime']
+        dir_qa = os.path.abspath(os.path.join("log", experiment_name))
         ans = q_db.similarity_search(query, k)
         out = {
             "type": "QA-Embedding-Retrieve",
@@ -73,7 +71,9 @@ class QAVectorSearchCalling(Tool):
             "retrieve": [value.__str__() for value in ans],
             "top_k": k,
         }
-        write_json(out, dir_qa)
+        print(os.path.join(dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
+        write_json(out, os.path.join(
+            dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
         return ans.__str__()
 
 
@@ -87,14 +87,19 @@ class PVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 50, rank: int = 5) -> str:
+        experiment_config_dir, experiment_config = load_experiment_config()
+        experiment_name = experiment_config['name'] + "_" + \
+            experiment_config['model'] + experiment_config['datetime']
+        dir_pqa = os.path.abspath(os.path.join("log", experiment_name))
         ans = d_db.similarity_search(query, k)
-        if k < rank:
-            rank = k
+        rank = min(k, rank)
         print(f"k: {k}, rank: {rank}")
+
         ans_str = [value.__str__() for value in ans]
         reranker_res = reranker.rank(
             query, ans_str, return_documents=True, top_k=rank)
         print(f"reranker_res: {reranker_res}")
+
         out = {
             "type": "P-Embedding-Retrieve",
             "query": query,
@@ -103,10 +108,17 @@ class PVectorSearchCalling(Tool):
             "top_k": k,
             "rank": rank,
         }
-        write_json(out, dir_pqa)
-        if ("rerank" in experiment_config['agent']):
-            return reranker_res.__str__()
-        return ans.__str__()
+
+        file_path = os.path.join(
+            dir_pqa, experiment_config['cur_ques'], 'product_qa.jsonl')
+        print(f"Saving to {file_path}")
+
+        try:
+            return_val = reranker_res.__str__(
+            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+        finally:
+            write_json(out, file_path)
+            return return_val
 
 
 retriever_instructions = """

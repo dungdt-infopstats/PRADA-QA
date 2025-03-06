@@ -1,1 +1,2 @@
-dir : "D:/AI_CODE/MASEE/config/experiment/web/part9.yaml"
+dir : D:\AI_CODE\MASEE\config\experiment\sql\config.yaml
+eval_dir: D:\AI_CODE\MASEE\config\evaluation\sql_only.yaml

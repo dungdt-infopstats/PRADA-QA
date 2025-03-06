@@ -1,0 +1,9 @@
+agent:
+- web
+- qa
+- rerank
+cur_ques: Tx10JQRO2GCRL8E
+datetime: _2025-03-05 01-28-24
+model: deepseek
+name: cut_sql
+part: 9

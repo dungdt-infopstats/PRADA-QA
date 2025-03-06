@@ -20,6 +20,9 @@ def load_experiment_config(config_dir = "config\experiment.yaml"):
     experiment_config = load_config(experiment_config_dir)
     return experiment_config_dir, experiment_config
 
+def load_jsonl(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        return [json.loads(line) for line in file]
 
 def save_config(yaml_path, yaml_data):
     yaml_file = yaml.dump(yaml_data)
@@ -41,7 +44,7 @@ def init_ques_folder(path):
 def write_json(data, path):
     with open(path, "a", encoding="utf-8") as file:
         file.write(json.dumps(data, ensure_ascii=False) + "\n")
-
+    return
 def get_response(prompt, model="gpt-4o-mini"):
     response = client.chat.completions.create(
         messages=[{
@@ -85,12 +88,13 @@ Your answer:\n
 
 """
 
-part = 8
-type = 'retrieve'
-cut = ''
+eval_config_dir = load_config("D:\AI_CODE\MASEE\config\experiment.yaml")['eval_dir']
+eval_config = load_config(eval_config_dir)
 
-prediction_dir = f"D:/AI_CODE/MASEE/data/predictions_part{part}_{type}_{cut}.jsonl"
-eval_dir = f'D:/AI_CODE/MASEE/data/eval_scores_{part}_{type}_{cut}.json'
+part = eval_config['part']
+name = eval_config['name']
+prediction_dir = f"D:/AI_CODE/MASEE/data/{name}.jsonl"
+eval_dir = f'D:/AI_CODE/MASEE/data/eval_scores_{name}.json'
 def eval_scores():
     question_df = pd.read_csv(
         f"D:/AI_CODE/MASEE/data/acs_pqa_validation_part{part}.csv")

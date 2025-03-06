@@ -1,4 +1,4 @@
-model-id: deepseek/deepseek-chat
+model-id: gpt-4o-mini
 model-type: LiteLLMModel
-model-api: DEEPSEEK_API_KEY
+model-api: OPENAI_API_KEY
 headless: true

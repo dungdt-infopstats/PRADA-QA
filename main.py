@@ -21,7 +21,7 @@ from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
 from agents.web_agent import initialize_agent, initialize_driver
 from smolagents.cli import load_model
-from utils import load_config, save_config, create_folder, init_ques_folder, load_experiment_config
+from utils import load_config, save_config, create_folder, init_ques_folder, load_experiment_config, load_jsonl
 from agents.product_agent import RVSQLAgentCalling
 from agents.qastorage_agent import get_qa_agent
 from agents.vectorstore import load_vector_store
@@ -140,12 +140,21 @@ def evaluation(
     """
     Chạy đánh giá trên question_df và lưu từng kết quả vào file .jsonl ngay sau khi hoàn thành một dòng.
     """
+    list_prev_key = []
+    if 'prev_file' in experiment_config:
+        print('CONTINUE')
+        prev_file = experiment_config['prev_file']
+        list_jsonl = load_jsonl(prev_file)
+        list_prev_key = [list(value.keys())[0] for value in list_jsonl]
     with jsonlines.open(save_path, mode='a') as writer:
         for _, row in question_df.iterrows():
 
             '''
             save current question for experiment so that other file can get the current question folder
             '''
+            if row['question_id'] in list_prev_key:
+                print('SKIP QUESTION')
+                continue
             experiment_config['cur_ques'] = row['question_id']
             save_config(experiment_config_dir, experiment_config)
 
@@ -153,7 +162,7 @@ def evaluation(
             path = os.path.join(experiment_folder,
                                 experiment_config['cur_ques'])
             ques_folder = create_folder(path)
-
+            
             # create file for question folder
             init_ques_folder(ques_folder)
             prompt = pqa_instructions.format(
@@ -169,7 +178,7 @@ def evaluation(
             d_db.add_documents(d_doc)
             # write new line
             writer.write({row['question_id']: predicted_answer})
-
+            
     print(f"Saved results to {save_path}")
 
 
@@ -191,11 +200,22 @@ def main():
     prod_agent = product_agent()
     meta_agent_config = load_config(config['meta_agent'])
     # cut prod agent
+    tools = []
+    manage = []
+    if ('web' in experiment_config['agent']):
+        manage.append(web_agent)
+    if ('qa' in experiment_config['agent']):
+        tools.append(QAVectorSearchCalling())
+        tools.append(PVectorSearchCalling())
+    if ('product' in experiment_config['agent']):
+        tools.append(prod_agent)
+    print(manage)
+    print(tools)
     meta_agent = CodeAgent(
-        tools=[PVectorSearchCalling(), QAVectorSearchCalling()],
+        tools=tools,
         model=load_model(
             meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api']),
-        managed_agents=[web_agent],
+        managed_agents=manage,
         additional_authorized_imports=['time', 'numpy', 'pandas']
     )
     question_df = pd.read_csv(args.question_df_path)
