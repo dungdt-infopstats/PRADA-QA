@@ -25,12 +25,14 @@ from utils import load_config, save_config, create_folder, init_ques_folder, loa
 from agents.product_agent import RVSQLAgentCalling
 from agents.qastorage_agent import get_qa_agent
 from agents.vectorstore import load_vector_store
-from agents.qastorage_agent import QAVectorSearchCalling, PVectorSearchCalling
+from agents.qastorage_agent import QAVectorSearchCalling, PVectorSearchCalling, AVectorSearchCalling
 import os
 import jsonlines
 import datetime
+import sys
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+DATA_CHOICE = 'pants'
 '''
 CONFIG
 '''
@@ -40,11 +42,29 @@ experiment_config_dir, experiment_config = load_experiment_config()
 # create datetime for make different folder experiments
 date_time = f'_{datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S").__str__()}'
 experiment_config['datetime'] = date_time
+
+# # extract the part for get validation data and make prediction file
+# model_name, _type, part = sys.argv[1], sys.argv[2], int(sys.argv[3])
+
+# print(sys.argv)
+
+if len(sys.argv) != 4:
+    print("Usage: python main.py <value>")
+    sys.exit(1)
+# part = int(sys.argv[1])
+# print(f'PART: {part}')
+model_name, _type, part = sys.argv[1], sys.argv[2], int(sys.argv[3])
+print(model_name)
+experiment_config['model'] = model_name
+experiment_config['model'] = experiment_config['model'].replace(
+    '.', '-').replace(':', '-')
+experiment_config['name'] = _type
+experiment_config['agent'] = [_type]
+experiment_config['part'] = part
+experiment_config['model-id'] = model_name
+# part = experiment_config['part']
+
 save_config(experiment_config_dir, experiment_config)
-
-# extract the part for get validation data and make prediction file
-part = experiment_config['part']
-
 # log folder
 log_dir = "log"
 
@@ -53,12 +73,36 @@ experiment_name = experiment_config['name'] + "_" + \
     experiment_config['model'] + experiment_config['datetime']
 
 # create folder
-experiment_folder = create_folder(os.path.join(log_dir, experiment_name))
+experiment_folder = create_folder(
+    os.path.join(log_dir, experiment_name, str(experiment_config['part'])))
+# experiment_config['part'] = part
+save_config(experiment_config_dir, experiment_config)
+
+create_folder(
+    f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}")
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run a multi-agent system to answer product-related questions.")
+    parser.add_argument(
+        "model_name",
+        type=str,
+        default='model',
+        nargs="?",
+    )
+    parser.add_argument(
+        "_type",
+        type=str,
+        default='type',
+        nargs="?",
+    )
+    parser.add_argument(
+        "part",
+        type=str,
+        default='part',
+        nargs="?",
+    )
     parser.add_argument(
         "prompt",
         type=str,
@@ -69,13 +113,13 @@ def parse_arguments():
     parser.add_argument(
         "--question_df_path",
         type=str,
-        default=f"D:/AI_CODE/MASEE/data/acs_pqa_validation_part{part}.csv",
+        default=f"D:/AI_CODE/MASEE/data/{DATA_CHOICE}_pqa_validation_part{experiment_config['part']}.csv",
         help="Path to the question dataframe CSV file",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default=f"D:/AI_CODE/MASEE/data/predictions_part{part}_{experiment_name}.jsonl",
+        default=f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}/{DATA_CHOICE}_predictions_part{experiment_config['part']}_{experiment_name}.jsonl",
         help="Path to save the evaluation predictions",
     )
     return parser.parse_args()
@@ -85,7 +129,6 @@ pqa_instructions = """
 Answer a product-related question from a user interacting with an e-commerce platform. You will be given user question and the product details. There are two types of questions: yes-no and WH.
 Use your knowledge in the shopping domain or using your equipped tools to answer the question.
 Remember to plan to answer efficiently because some tools are very expensive. Be concise and explain your answer to the user.
-
 Example question:
 - Question: Will these shrink after a wash?
 - Question-type: yes-no
@@ -134,14 +177,15 @@ def QAStorageAgent():
 
 def evaluation(
     question_df: pd.DataFrame,
-    meta_agent: CodeAgent,
-    save_path: str = ''
+    meta_agent: CodeAgent = None,
+    model=None,
+    save_path: str = '',
 ):
     """
     Chạy đánh giá trên question_df và lưu từng kết quả vào file .jsonl ngay sau khi hoàn thành một dòng.
     """
     list_prev_key = []
-    if 'prev_file' in experiment_config:
+    if experiment_config['part'] == 6 and 'prev_file' in experiment_config:
         print('CONTINUE')
         prev_file = experiment_config['prev_file']
         list_jsonl = load_jsonl(prev_file)
@@ -162,23 +206,44 @@ def evaluation(
             path = os.path.join(experiment_folder,
                                 experiment_config['cur_ques'])
             ques_folder = create_folder(path)
-            
+
             # create file for question folder
             init_ques_folder(ques_folder)
+            description = ''
+            if experiment_config['agent'] != None:
+                if experiment_config['agent'][0] in ['base_description', 'base_description_code', 'qa']:
+                    description = row['description']
+                    print('DESCRIPTION INCLUDED!')
             prompt = pqa_instructions.format(
-                row['question_text'], row['question_id'], row['question_type'], row['asin'], row['item_name'], row['description'])
-
+                row['question_text'], row['question_id'], row['question_type'], row['asin'], row['item_name'], description)
             q_doc, d_doc = q_db.get_by_ids(
-                [row['question_id']]), d_db.get_by_ids([row['question_id']])
+                [row['question_id']]), d_db.get_by_ids([row['asin']])
             q_db.delete(ids=[row['question_id']])
-            d_db.delete(ids=[row['question_id']])
+            d_db.delete(ids=[row['asin']])
 
-            predicted_answer = meta_agent.run(prompt)
+            related_ques = [doc.id for doc in q_db.similarity_search("", k=q_db.index.ntotal)
+                            if doc.metadata.get("asin") == row['asin']]
+
+            print(related_ques)
+            # Xóa các câu hỏi có cùng `asin` khỏi FAISS
+            if related_ques:
+                q_docs_backup = q_db.get_by_ids(related_ques)
+                print(
+                    f"REMOVING {len(related_ques)} questions with asin={row['asin']}")
+                q_db.delete(ids=related_ques)
+            if isinstance(meta_agent, CodeAgent):
+                predicted_answer = meta_agent.run(prompt)
+            else:
+                predicted_answer = model(
+                    messages=[{'content': prompt, 'role': 'user'}]
+                ).content
+
             q_db.add_documents(q_doc)
             d_db.add_documents(d_doc)
+            q_db.add_documents(q_docs_backup)
             # write new line
             writer.write({row['question_id']: predicted_answer})
-            
+            break
     print(f"Saved results to {save_path}")
 
 
@@ -195,31 +260,43 @@ def main():
     #     verbose=True
     # )
 
-    web_agent = web_ag(config)
     # qa_agent = get_qa_agent()
-    prod_agent = product_agent()
     meta_agent_config = load_config(config['meta_agent'])
+    meta_agent_config['model-id'] = experiment_config['model-id']
+    save_config(config['meta_agent'], meta_agent_config)
     # cut prod agent
     tools = []
     manage = []
-    if ('web' in experiment_config['agent']):
-        manage.append(web_agent)
-    if ('qa' in experiment_config['agent']):
-        tools.append(QAVectorSearchCalling())
-        tools.append(PVectorSearchCalling())
-    if ('product' in experiment_config['agent']):
-        tools.append(prod_agent)
+    if experiment_config['agent'] is not None:
+        if ('web' in experiment_config['agent']):
+            web_agent = web_ag(config)
+            manage.append(web_agent)
+        if ('qa' in experiment_config['agent']):
+            tools.append(QAVectorSearchCalling())
+            tools.append(PVectorSearchCalling())
+            tools.append(AVectorSearchCalling())
+        if ('product' in experiment_config['agent']):
+            prod_agent = product_agent()
+            tools.append(prod_agent)
     print(manage)
     print(tools)
     meta_agent = CodeAgent(
         tools=tools,
         model=load_model(
-            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api']),
+            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
         managed_agents=manage,
         additional_authorized_imports=['time', 'numpy', 'pandas']
     )
+
+    model = load_model(meta_agent_config['model-type'], meta_agent_config['model-id'],
+                       meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base'])
+    model_choice = meta_agent
+    if experiment_config['agent'][0] in ['base', 'base_description']:
+        model_choice = model
+        print('CHOOSE TEXT MODEL')
     question_df = pd.read_csv(args.question_df_path)
-    prediction = evaluation(question_df, meta_agent, save_path=args.save_path)
+    prediction = evaluation(
+        question_df, meta_agent=model_choice, save_path=args.save_path)
 
 
 if __name__ == "__main__":

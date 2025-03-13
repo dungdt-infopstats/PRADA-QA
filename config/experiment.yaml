@@ -1,2 +1,2 @@
-dir : D:\AI_CODE\MASEE\config\experiment\sql\config.yaml
-eval_dir: D:\AI_CODE\MASEE\config\evaluation\sql_only.yaml
+dir : D:\AI_CODE\MASEE\config\experiment\multi_experiment.yaml
+eval_dir: D:\AI_CODE\MASEE\config\evaluation\retrieve_only.yaml

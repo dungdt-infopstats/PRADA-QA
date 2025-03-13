@@ -1,0 +1,7 @@
+agent:
+- qa
+cur_ques: Tx10JQRO2GCRL8E
+datetime: _2025-03-10 15-48-27
+model: qwen_25_code_instruct
+name: qwen_25_code_instruct_retrieve_only_3db
+part: 9

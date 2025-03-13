@@ -1,0 +1,8 @@
+agent:
+- qa
+- rerank
+cur_ques: Tx2RQ5D9NRBWFWV
+datetime: _2025-03-06 16-05-21
+model: gpt-4o-mini
+name: retrieve_rerank
+part: 7

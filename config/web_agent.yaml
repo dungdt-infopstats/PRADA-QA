@@ -1,4 +1,9 @@
-model-id: gpt-4o-mini
-model-type: LiteLLMModel
-model-api: OPENAI_API_KEY
+# model-id: gpt-4o-mini
+# model-type: LiteLLMModel
+# model-api: OPENAI_API_KEY
+# headless: true
+
+model-id: Qwen/Qwen2.5-Coder-14B-Instruct
+model-type: OpenAIServerModel
+model-api: super-secret-key
 headless: true

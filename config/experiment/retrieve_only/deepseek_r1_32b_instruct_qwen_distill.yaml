@@ -1,0 +1,7 @@
+agent:
+- qa
+cur_ques: Tx2YKIUJGVHE35M
+datetime: _2025-03-11 16-27-13
+model: deepseek-r1-32b-distill-qwen
+name: retrieve_only
+part: 1

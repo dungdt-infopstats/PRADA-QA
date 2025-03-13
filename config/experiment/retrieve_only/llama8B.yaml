@@ -1,0 +1,7 @@
+agent:
+- qa
+cur_ques: Tx10JQRO2GCRL8E
+datetime: _2025-03-06 22-53-14
+model: llama-8B
+name: retrieve_only_llama8B
+part: 9

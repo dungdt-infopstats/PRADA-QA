@@ -1,0 +1,16 @@
+# model-id: gpt-4o-mini
+# model-type: LiteLLMModel
+# model-api: OPENAI_API_KEY
+# headless: true
+
+model-id: qwen2.5-coder:14b-instruct-fp16
+model-type: OpenAIServerModel
+api-key: ollama
+api-base: http://10.4.23.1:11434/v1
+headless: true
+
+# model-id: Groq/Llama-3-Groq-8B-Tool-Use
+# model-type: OpenAIServerModel
+# api-key: super-secret-key
+# api-base: https://agents-pqa--example-vllm-openai-compatible-1-serve.modal.run/v1
+# headless: true

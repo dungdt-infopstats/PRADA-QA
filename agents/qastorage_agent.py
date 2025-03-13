@@ -46,7 +46,7 @@ def load_config(yaml_path):
 
 q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
 d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
-
+a_db = load_vector_store("D:/AI_CODE/MASEE/data/attribute_faiss_index")
 reranker = CrossEncoder(
     "jinaai/jina-reranker-v1-turbo-en", trust_remote_code=True)
 
@@ -54,27 +54,56 @@ reranker = CrossEncoder(
 class QAVectorSearchCalling(Tool):
     name = "qa_vector"
     description = """calls the vector database to retrieve most similar questions to the input question. The tool can be used
-    to search for similar questions, or other creative use cases. Provide user question (or your refinement of the question) to search for similar questions."""
+    to search for similar questions, or other creative use cases. Provide user question (or your refinement of the question) to search for similar questions. 
+    Do not add additional parameters, follow the instructions carefully."""
     inputs = {"query": {"type": "string", "description": "The text query to perform. must contain product asin"},
-              "k": {"type": "integer", "description": "The number of similar questions to return", "nullable": True}}
+              "k": {"type": "integer", "description": "The number of similar questions to return, should be less than 10", "nullable": True},
+              "rank": {"type": "integer", "description": "the top similar products after reranking, should be less than 10", "nullable": True}}
     output_type = "string"
 
-    def forward(self, query: str, k: int = 50) -> str:
+    def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
         experiment_config_dir, experiment_config = load_experiment_config()
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
-        dir_qa = os.path.abspath(os.path.join("log", experiment_name))
+        dir_qa = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
         ans = q_db.similarity_search(query, k)
+        rank = min(k, rank)
+        print(f"k: {k}, rank: {rank}")
+
+        ans_str = [value.__str__() for value in ans]
+        reranker_res = reranker.rank(
+            query, ans_str, return_documents=True, top_k=rank)
+        print(f"reranker_res: {reranker_res}")
+
         out = {
             "type": "QA-Embedding-Retrieve",
             "query": query,
-            "retrieve": [value.__str__() for value in ans],
+            "retrieve": ans_str,
+            "rerank": [value.__str__() for value in reranker_res],
             "top_k": k,
+            "rank": rank,
         }
-        print(os.path.join(dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
-        write_json(out, os.path.join(
-            dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
-        return ans.__str__()
+
+        file_path = os.path.join(
+            dir_qa, experiment_config['cur_ques'], 'qa.jsonl')
+        print(f"Saving to {file_path}")
+
+        try:
+            return_val = reranker_res.__str__(
+            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+        finally:
+            write_json(out, file_path)
+            return return_val
+        # out = {
+        #     "type": "QA-Embedding-Retrieve",
+        #     "query": query,
+        #     "retrieve": [value.__str__() for value in ans],
+        #     "top_k": k,
+        # }
+        # print(os.path.join(dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
+        # write_json(out, os.path.join(
+        #     dir_qa, experiment_config['cur_ques'], 'qa.jsonl'))
+        # return ans.__str__()
 
 
 class PVectorSearchCalling(Tool):
@@ -90,7 +119,7 @@ class PVectorSearchCalling(Tool):
         experiment_config_dir, experiment_config = load_experiment_config()
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
-        dir_pqa = os.path.abspath(os.path.join("log", experiment_name))
+        dir_pqa = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
         ans = d_db.similarity_search(query, k)
         rank = min(k, rank)
         print(f"k: {k}, rank: {rank}")
@@ -111,6 +140,51 @@ class PVectorSearchCalling(Tool):
 
         file_path = os.path.join(
             dir_pqa, experiment_config['cur_ques'], 'product_qa.jsonl')
+        print(f"Saving to {file_path}")
+
+        try:
+            return_val = reranker_res.__str__(
+            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+        finally:
+            write_json(out, file_path)
+            return return_val
+
+
+class AVectorSearchCalling(Tool):
+    name = "attribute_vector"
+    description = """calls the vector database to retrieve most similar attributes to the input product attribute. The results include top-k similar attributes, along
+    with their product asin (ID), titles, descriptions. This can be used for to further retrieval steps, like using similar products to retrieve other similar questions, or even more creative use cases.
+    """
+    inputs = {"query": {"type": "string", "description": "The text query to perform"},
+              "k": {"type": "integer", "description": "The number of similar attributes to return", "nullable": True},
+              "rank": {"type": "integer", "description": "the top similar products after reranking, should be less than 10", "nullable": True}}
+    output_type = "string"
+
+    def forward(self, query: str, k: int = 50, rank: int = 5) -> str:
+        experiment_config_dir, experiment_config = load_experiment_config()
+        experiment_name = experiment_config['name'] + "_" + \
+            experiment_config['model'] + experiment_config['datetime']
+        dir_a = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
+        ans = d_db.similarity_search(query, k)
+        rank = min(k, rank)
+        print(f"k: {k}, rank: {rank}")
+
+        ans_str = [value.__str__() for value in ans]
+        reranker_res = reranker.rank(
+            query, ans_str, return_documents=True, top_k=rank)
+        print(f"reranker_res: {reranker_res}")
+
+        out = {
+            "type": "ATT-Embedding-Retrieve",
+            "query": query,
+            "retrieve": ans_str,
+            "rerank": [value.__str__() for value in reranker_res],
+            "top_k": k,
+            "rank": rank,
+        }
+
+        file_path = os.path.join(
+            dir_a, experiment_config['cur_ques'], 'att.jsonl')
         print(f"Saving to {file_path}")
 
         try:

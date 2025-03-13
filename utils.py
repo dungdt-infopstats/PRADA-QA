@@ -34,7 +34,7 @@ def create_folder(path):
     return path
 
 def init_ques_folder(path):
-    files = ['web.jsonl', 'qa.jsonl', 'product_qa.jsonl', 'product_sql.jsonl']
+    files = ['web.jsonl', 'qa.jsonl', 'product_qa.jsonl', 'product_sql.jsonl', 'att.jsonl']
     for file in files:
         file_dir = os.path.join(path, file)
         with open(file_dir, 'w'):
@@ -45,6 +45,8 @@ def write_json(data, path):
     with open(path, "a", encoding="utf-8") as file:
         file.write(json.dumps(data, ensure_ascii=False) + "\n")
     return
+
+import time
 def get_response(prompt, model="gpt-4o-mini"):
     response = client.chat.completions.create(
         messages=[{
@@ -53,8 +55,9 @@ def get_response(prompt, model="gpt-4o-mini"):
         }],
         model=model,
     ).choices[0].message.content
-
+    time.sleep(1)
     # parse to json
+    print(response)
     response = json.loads(response)
     return response
 
@@ -65,7 +68,7 @@ There are two types of questions: yes-no and WH. Although the yes-no questions a
 Your task is to compare AI answers with other user answers and give the score: 1 if the AI answer match ideas / information in other user answers (including partial match), 0 if totally different, 0.5 if it is really hard to decide.
 Remember to consider the context of the question and the product details.
 
-Return your response in a dictionary format with three keys: question_id, score, and comment.
+Return your response in a dictionary format (JSON) with three keys: question_id, score, and comment. Only return json format, not include any character at the start of output.
 Example
 {{
     "question_id": xxxx,
@@ -93,8 +96,14 @@ eval_config = load_config(eval_config_dir)
 
 part = eval_config['part']
 name = eval_config['name']
-prediction_dir = f"D:/AI_CODE/MASEE/data/{name}.jsonl"
-eval_dir = f'D:/AI_CODE/MASEE/data/eval_scores_{name}.json'
+
+experiment_config_dir, experiment_config = load_experiment_config()
+
+prediction_dir = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}/{name}.jsonl"
+
+eval_path = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/eval_{experiment_config['name']}"
+
+eval_dir = os.path.join(eval_path, f'eval_{name}.json')
 def eval_scores():
     question_df = pd.read_csv(
         f"D:/AI_CODE/MASEE/data/acs_pqa_validation_part{part}.csv")
@@ -141,6 +150,7 @@ def temp_merge():
 
 
 if __name__ == "__main__":
+    create_folder(eval_path)
     load_dotenv()
     client = OpenAI()
     scores = eval_scores()

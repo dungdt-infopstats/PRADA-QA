@@ -1,0 +1,8 @@
+agent:
+- base_description
+cur_ques: Tx1LGSCAT26K2GV
+datetime: _2025-03-14 00-58-32
+model: qwen2-5-14b-instruct
+model-id: qwen2.5:14b-instruct
+name: base_description
+part: 8

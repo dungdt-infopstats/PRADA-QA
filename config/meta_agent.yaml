@@ -1,4 +1,7 @@
-model-id: gpt-4o-mini
-model-type: LiteLLMModel
-model-api: OPENAI_API_KEY
+api-base: http://10.4.23.1:11434/v1
+api-key: ollama
 headless: true
+model-api: OPENAI_API_KEY
+model-id: qwen2.5:14b-instruct
+model-name: null
+model-type: OpenAIServerModel

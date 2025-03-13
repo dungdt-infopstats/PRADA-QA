@@ -1,0 +1,3 @@
+model_name: codellama/CodeLlama-7b-Instruct-hf
+token_hf: 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
+model_revision: 22cb240e0292b0b5ab4c17ccd97aa3a2f799cbed

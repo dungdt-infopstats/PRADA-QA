@@ -70,7 +70,7 @@ def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
     experiment_config_dir, experiment_config = load_experiment_config()
     experiment_name = experiment_config['name'] + "_" + \
         experiment_config['model'] + experiment_config['datetime']
-    dir_w = os.path.abspath(os.path.join("log", experiment_name))
+    dir_w = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
     sleep(1.0)  # Let JavaScript animations happen before taking the screenshot
     driver = helium.get_driver()
     current_step = memory_step.step_number

@@ -53,7 +53,7 @@ class RVSQLAgentCalling(Tool):
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
         dir_p = os.path.abspath(os.path.join(
-            "log", experiment_name))
+            "log", experiment_name, str(experiment_config['part'])))
         result = sql_agent_rv.invoke(query)
         out = {
             "type": "P-SQL",

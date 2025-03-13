@@ -1,0 +1,7 @@
+agent:
+- qa
+cur_ques: Tx3UWXTQHCAHEDH
+datetime: _2025-03-09 16-00-48
+model: codellama13b
+name: retrieve_only_3db_codellama13b
+part: 9
