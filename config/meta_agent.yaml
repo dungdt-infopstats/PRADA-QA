@@ -1,7 +1,7 @@
-api-base: http://10.4.23.1:11434/v1
-api-key: ollama
+api-base: https://tridung392004--example-vllm-openai-compatible-1-serve.modal.run/v1
+api-key: super-secret-key
 headless: true
 model-api: OPENAI_API_KEY
-model-id: qwen2.5:14b-instruct
+model-id: Qwen/Qwen2.5-14B-Instruct
 model-name: null
 model-type: OpenAIServerModel

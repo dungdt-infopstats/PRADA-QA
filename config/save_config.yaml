@@ -3,6 +3,14 @@
 # model-api: OPENAI_API_KEY
 # headless: true
 
+# api-base: http://10.4.23.1:11434/v1
+# api-key: ollama
+# headless: true
+# model-api: OPENAI_API_KEY
+# model-id: deepseek-r1:32b-qwen-distill-fp16
+# model-name: null
+# model-type: OpenAIServerModel
+
 model-id: qwen2.5-coder:14b-instruct-fp16
 model-type: OpenAIServerModel
 api-key: ollama
@@ -14,3 +22,5 @@ headless: true
 # api-key: super-secret-key
 # api-base: https://agents-pqa--example-vllm-openai-compatible-1-serve.modal.run/v1
 # headless: true
+# model-api: OPENAI_API_KEY
+# model-name: null

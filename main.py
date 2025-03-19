@@ -32,7 +32,7 @@ import datetime
 import sys
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-DATA_CHOICE = 'pants'
+DATA_CHOICE = 'acs'
 '''
 CONFIG
 '''
@@ -57,7 +57,7 @@ model_name, _type, part = sys.argv[1], sys.argv[2], int(sys.argv[3])
 print(model_name)
 experiment_config['model'] = model_name
 experiment_config['model'] = experiment_config['model'].replace(
-    '.', '-').replace(':', '-')
+    '.', '-').replace(':', '-').replace('/','-')
 experiment_config['name'] = _type
 experiment_config['agent'] = [_type]
 experiment_config['part'] = part
@@ -152,9 +152,9 @@ load_dotenv()
 config = load_config('path_config.yaml')
 args = parse_arguments()
 
-rv_db = SQLDatabase.from_uri(f"sqlite:///{config['data']['review_db']}")
-q_db = load_vector_store(config['data']['q_faiss_index'])
-d_db = load_vector_store(config['data']['d_faiss_index'])
+# rv_db = SQLDatabase.from_uri(f"sqlite:///{config['data']['review_db']}")
+# q_db = load_vector_store(config['data']['q_faiss_index'])
+# d_db = load_vector_store(config['data']['d_faiss_index'])
 
 
 def web_ag(config):
@@ -216,34 +216,33 @@ def evaluation(
                     print('DESCRIPTION INCLUDED!')
             prompt = pqa_instructions.format(
                 row['question_text'], row['question_id'], row['question_type'], row['asin'], row['item_name'], description)
-            q_doc, d_doc = q_db.get_by_ids(
-                [row['question_id']]), d_db.get_by_ids([row['asin']])
-            q_db.delete(ids=[row['question_id']])
-            d_db.delete(ids=[row['asin']])
+            # q_doc, d_doc = q_db.get_by_ids(
+            #     [row['question_id']]), d_db.get_by_ids([row['asin']])
+            # q_db.delete(ids=[row['question_id']])
+            # d_db.delete(ids=[row['asin']])
 
-            related_ques = [doc.id for doc in q_db.similarity_search("", k=q_db.index.ntotal)
-                            if doc.metadata.get("asin") == row['asin']]
+            # related_ques = [doc.id for doc in q_db.similarity_search("", k=q_db.index.ntotal)
+            #                 if doc.metadata.get("asin") == row['asin']]
 
-            print(related_ques)
-            # Xóa các câu hỏi có cùng `asin` khỏi FAISS
-            if related_ques:
-                q_docs_backup = q_db.get_by_ids(related_ques)
-                print(
-                    f"REMOVING {len(related_ques)} questions with asin={row['asin']}")
-                q_db.delete(ids=related_ques)
+            # print(related_ques)
+            # # Xóa các câu hỏi có cùng `asin` khỏi FAISS
+            # if related_ques:
+            #     q_docs_backup = q_db.get_by_ids(related_ques)
+            #     print(
+            #         f"REMOVING {len(related_ques)} questions with asin={row['asin']}")
+            #     q_db.delete(ids=related_ques)
             if isinstance(meta_agent, CodeAgent):
                 predicted_answer = meta_agent.run(prompt)
             else:
-                predicted_answer = model(
+                predicted_answer = meta_agent(
                     messages=[{'content': prompt, 'role': 'user'}]
                 ).content
 
-            q_db.add_documents(q_doc)
-            d_db.add_documents(d_doc)
-            q_db.add_documents(q_docs_backup)
+            # q_db.add_documents(q_doc)
+            # d_db.add_documents(d_doc)
+            # q_db.add_documents(q_docs_backup)
             # write new line
             writer.write({row['question_id']: predicted_answer})
-            break
     print(f"Saved results to {save_path}")
 
 

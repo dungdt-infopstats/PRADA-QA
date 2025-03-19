@@ -2,8 +2,8 @@ import json
 import re
 import os
 
-path = "data\deepseek-r1-32b-distill-qwen/base-description"
-input_name = "predictions_part9_base-description_deepseek-r1-32b-distill-qwen_2025-03-11 18-04-41"
+path = "data\deepseek-r1-32b-distill-qwen/base-deepseek-r1-32b-distill-qwen"
+input_name = "predictions_part7_base-deepseek-r1-32b-distill-qwen_deepseek-r1-32b-distill-qwen_2025-03-11 10-39-30"
 output_name = "unthink" + input_name
 
 input_file = os.path.join(path, input_name + '.jsonl')

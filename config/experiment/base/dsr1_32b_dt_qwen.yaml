@@ -1,6 +1,8 @@
-agent: null
-cur_ques: Tx10JQRO2GCRL8E
-datetime: _2025-03-11 18-04-41
-model: deepseek-r1-32b-distill-qwen
-name: base-description
-part: 9
+agent:
+- base_code
+cur_ques: Tx3PV85ZT1QYRUG
+datetime: _2025-03-15 06-14-53
+model: deepseek-r1-32b-qwen-distill-fp16
+model-id: deepseek-r1:32b-qwen-distill-fp16
+name: base_code
+part: 0

@@ -42,7 +42,7 @@ VLLM_PORT = 8000
     # MODELS_DIR = "/llamas"
     
     # MODEL_REVISION = config['model_revision']
-MODEL_NAME = "Groq/Llama-3-Groq-8B-Tool-Use"
+MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct"
 
 @app.function(
     image=vllm_image,
