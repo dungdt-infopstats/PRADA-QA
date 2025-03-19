@@ -1,39 +1,40 @@
-from smolagents import CodeAgent
+from smolagents import CodeAgent, TaskStep, ActionStep
+import json
+
 
 instruction_prompt = """
 # Role:
-You are a reasoning agent that evaluates whether a provided answer **fully satisfies** customer inquiries about a product. Your job is to critically assess whether the answer is not only correct but also **comprehensive, precise, and highly informative**. Additionally, if the answer is not at the highest possible standard, you must suggest refinements (`refine_query`) to further **enhance clarity, completeness, and usefulness**.
+You are a reasoning agent responsible for evaluating the quality of a provided answer to a customer inquiry. Your goal is to ensure the answer is **clear, precise, and fully addresses the customer's needs** without unnecessary length or excessive details. The focus is on **effectiveness rather than just comprehensiveness**.
 
 # Task:
-- Given a sequence of memory steps containing **observations and model-generated outputs**, along with a final answer provided to the customer, determine whether the answer is **fully optimized and meets the highest standards of completeness and clarity**.
-- If the answer **fails to address any observation, contains inaccuracies, or lacks key product details**, set `"decision": "fail"` and provide a clear explanation in `"reason"`.
-- If the answer is **technically correct but could be improved for clarity, precision, or additional value**, still set `"decision": "fail"`, with a `"refine_query"` suggesting ways to enhance the answer.
+- Given a sequence of memory steps containing **observations and model-generated outputs**, along with a final answer, determine if the answer is **optimal**—meaning it is **accurate, concise, and directly answers the customer's concerns**.
+- If the answer is **incorrect, incomplete, or unclear**, set `"decision": "fail"` and provide a `"reason"` explaining why.
+- If the answer is **technically correct but could be improved**, also set `"decision": "fail"`, and include a `"refine_query"` with suggestions for improvement.
 - Refinements in `"refine_query"` should focus on:
-  - Expanding product details (features, pricing, comparisons, technical specifications).
-  - Searching additional sources (e.g., product databases, user reviews, technical documentation).
-  - Asking follow-up questions to the customer for deeper understanding.
-  - Checking internal knowledge bases or FAQs for more precise information.
-  - Adding insights from competitor product comparisons.
+  - Improving clarity, conciseness, or relevance.
+  - Correcting missing or inaccurate details.
+  - Enhancing readability and logical flow.
+  - Adding useful but minimal additional insights if necessary.
 
 # Considerations:
-- The answer **must not only be correct but also exceed customer expectations** in **clarity, completeness, and persuasiveness**.
-- Any **vagueness, missing details, or lack of depth should result in a `"fail"` decision**, even if the core information is correct.
-- The reasoning must be **objective** and based solely on the information given in the memory steps.
-- `"refine_query"` must **always be included unless the answer is absolutely perfect**, providing actionable suggestions to enhance the response further.
+- The **goal is to find the best possible answer, not just the longest or most detailed one**.
+- The answer should be **concise yet fully informative**, avoiding excessive elaboration.
+- `"decision": "fail"` should be assigned **only if the answer has meaningful gaps, inaccuracies, or could be significantly improved**.
+- `"decision": "pass"` should be assigned if the answer is **well-structured, accurate, and provides exactly what the customer needs**.
 
-# High-Standard Pass Criteria:
-`"decision": "pass"` should **only** be assigned if the answer:
-- Covers **every** relevant observation from memory **in full detail**.
-- Is **highly structured, professional, and articulate**.
-- Provides **more than just the required details**—it adds extra useful insights.
-- Anticipates possible follow-up questions and preemptively addresses them.
+# Pass Criteria:
+`"decision": "pass"` should be assigned if the answer:
+- **Directly addresses** all relevant observations from memory.
+- Is **clear, concise, and well-structured**.
+- Avoids unnecessary elaboration but still provides **all essential details**.
+- Is phrased in a way that minimizes the need for further clarification.
 
-# Strict Failure Criteria:
+# Failure Criteria:
 `"decision": "fail"` must be assigned if:
-- The answer is **vague or lacks precision** in explaining a product feature.
-- Any **observation from memory is not explicitly addressed**.
-- The answer is **not as informative as it could be** (even if it is technically correct).
-- There is an opportunity to **improve clarity, depth, or completeness**.
+- The answer **does not fully address the customer's inquiry**.
+- The response contains **vague, misleading, or incomplete information**.
+- The wording could be **significantly improved for clarity or impact**.
+- It includes **irrelevant information** that detracts from the main point.
 
 # Input:
 {}
@@ -41,9 +42,19 @@ You are a reasoning agent that evaluates whether a provided answer **fully satis
 # Output:
 {{
     "decision": "<pass/fail>",
-    "reason": "<clear and strict explanation of why the answer is incorrect, incomplete, or not optimal>",
-    "refine_query": "<specific recommendations to improve the answer>"
+    "reason": "<clear and balanced explanation of why the answer is incorrect, incomplete, or suboptimal>",
+    "refine_query": "<concise and actionable recommendations for improvement>"
 }}
+"""
+
+
+refinement_prompt = """
+Improve the previous answer based on the following feedback.
+Instruction and question: {}
+Reason for failure: {}  
+Required refinements: {}  
+
+Generate a new, improved answer that fully addresses these issues.
 """
 
 
@@ -67,15 +78,56 @@ class ReasoningAgent:
             'answer': answer
         }
 
-        prompt = self.prompt.format(reasoning_answer)
+        prompt = self.prompt.format(json.dumps(reasoning_answer, indent=4))
         messages = [{'content': prompt, 'role': 'user'}]
 
-        response = self.model(messages) 
-        return response 
+        response = self.model(messages).content
+        
+        try:
+            response_dict = json.loads(response)
+            if not all(key in response_dict for key in ["decision", "reason", "refine_query"]):
+                raise ValueError("Response missing required keys")
+        except (json.JSONDecodeError, ValueError) as e:
+            response_dict = {
+                "decision": "fail",
+                "reason": "Invalid model response format",
+                "refine_query": "Ensure the model returns a valid JSON structure"
+            }
 
-    def loop(self, meta_agent: CodeAgent, answer: str) -> dict:
+        return response_dict
+
+
+    """
+    #TODO:
+    - làm vòng for step_num
+    - cho meta agent trả lời, sau đó cho dùng reasoning đánh giá
+    - nếu decision không ngon, thì feedback lại meta, kèm với reason + refine query
+    """
+
+    def loop(self, prompt, meta_agent: CodeAgent, step_num: int = 10) -> dict:
         """Run reasoning in a loop if needed (placeholder for iteration logic)."""
-        return self.forward(meta_agent, answer)
+        final_answer = meta_agent.run(prompt)
 
+        response = self.forward(meta_agent, final_answer)
+        if response['decision'] == 'pass':
+            return final_answer
+        else:
+            for i in range(step_num):
+                # define prompt and task
+                task_prompt = refinement_prompt.format(prompt, response['reason'], response["refine_query"])
+                task = TaskStep(task=task_prompt)
+                # append for doing task
+                meta_agent.memory.steps.append(task)
+                # define action
+                print(f'ACTION: {i}')
+                action = ActionStep()
+                # get answer
+                final_answer = meta_agent.step(action)
+                # append action to memory
+                meta_agent.memory.steps.append(task)
+                response = self.forward(meta_agent, final_answer)
+                if response['decision'] == 'pass':
+                    break
+        return final_answer       
 if __name__ == '__main__':
     pass
