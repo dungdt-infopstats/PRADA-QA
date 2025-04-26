@@ -40,6 +40,8 @@ class RVSQLAgentCalling(Tool):
     to search for reviews, rating... of products, or other creative use cases. Remember to provide asin of the product you want to search for.
     The SQL Agent can take a text request for information,
     then use reasoning to generate a chains of SQL queries to answer the question.
+    You must also query the helpfulness of review, if the helpfulness is too low, for example smaller than 3, you must warning that the "information is not reliable, query from other sources".
+    If you think that the information is not reliable or too short or not helpful, please also warning user that "information is not reliable, query from other sources".
     - example of call: 
     ```py
     product_issues = review_database(query="B003MABXY issues or not working")

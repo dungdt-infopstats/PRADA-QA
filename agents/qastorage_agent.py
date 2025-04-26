@@ -28,6 +28,7 @@ from agents.vectorstore import create_vector_store, load_vector_store, save_vect
 from smolagents.tools import Tool
 
 from sentence_transformers import CrossEncoder
+from smolagents.models import OpenAIServerModel, LiteLLMModel
 
 import json
 import os
@@ -43,6 +44,40 @@ def load_config(yaml_path):
             print(exc)
             return {}
 
+def summerize(user_query, message):
+    messages = [
+        {
+            "role": "system",
+            "content": [
+                {
+                "type": "text",
+                "text": f"""
+                You are expert of document summerization. Your task is summerizing retriever information about e-commerce. You should summerize in 10 sentences, which relate to user query.
+                The USER QUERY is: {user_query}
+                """
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+            {
+                "type": "text",
+                "text": f"""
+                    USER QUERY: {user_query}
+                    RETRIEVE INFORMATION: {message}
+                """
+            }
+            ]
+        }
+    ]
+    model = OpenAIServerModel(
+        api_key="super-secret-key",
+        api_base="https://nzavjmj--example-vllm-openai-compatible-1-serve.modal.run/v1",
+        model_id="Qwen/Qwen2.5-14B-Instruct",
+    )
+    response = model(messages=messages).content
+    return response
 
 q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
 d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
@@ -62,35 +97,51 @@ class QAVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k > 10:
+            k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
         dir_qa = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
         ans = q_db.similarity_search(query, k)
+        ans_save = ans
         rank = min(k, rank)
         print(f"k: {k}, rank: {rank}")
 
-        ans_str = [value.__str__() for value in ans]
-        reranker_res = reranker.rank(
-            query, ans_str, return_documents=True, top_k=rank)
-        print(f"reranker_res: {reranker_res}")
+        # ans_str = [value.__str__() for value in ans]
+        # reranker_res = reranker.rank(
+        #     query, ans_str, return_documents=True, top_k=rank)
+        # print(f"reranker_res: {reranker_res}")
 
-        out = {
-            "type": "QA-Embedding-Retrieve",
-            "query": query,
-            "retrieve": ans_str,
-            "rerank": [value.__str__() for value in reranker_res],
-            "top_k": k,
-            "rank": rank,
-        }
-
+        if 'summerize' in experiment_config['agent']:
+            print('SUMMERIZATION')
+            try:
+                ans = summerize(query, ans)
+            except Exception as e:
+                print(e)
+                try:
+                    print('CHANGE K to 3')
+                    ans = q_db.similarity_search(query, 3)
+                    ans = summerize(query, ans)
+                except Exception as e_new:
+                    print(e_new)
+                    ans = ans_save
         file_path = os.path.join(
             dir_qa, experiment_config['cur_ques'], 'qa.jsonl')
         print(f"Saving to {file_path}")
 
+        out = {
+            "type": "ATT-Embedding-Retrieve",
+            "query": query,
+            "retrieve": ans.__str__(),
+            "top_k": k,
+            "rank": rank,
+        }
+
         try:
-            return_val = reranker_res.__str__(
-            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            # return_val = reranker_res.__str__(
+            # ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            return_val = ans.__str__()
         finally:
             write_json(out, file_path)
             return return_val
@@ -115,7 +166,9 @@ class PVectorSearchCalling(Tool):
               "rank": {"type": "integer", "description": "the top similar products after reranking, should be less than 10", "nullable": True}}
     output_type = "string"
 
-    def forward(self, query: str, k: int = 50, rank: int = 5) -> str:
+    def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k > 10:
+            k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
@@ -124,27 +177,31 @@ class PVectorSearchCalling(Tool):
         rank = min(k, rank)
         print(f"k: {k}, rank: {rank}")
 
-        ans_str = [value.__str__() for value in ans]
-        reranker_res = reranker.rank(
-            query, ans_str, return_documents=True, top_k=rank)
-        print(f"reranker_res: {reranker_res}")
+        # ans_str = [value.__str__() for value in ans]
+        # reranker_res = reranker.rank(
+        #     query, ans_str, return_documents=True, top_k=rank)
+        # print(f"reranker_res: {reranker_res}")
 
+
+        if 'summerize' in experiment_config['agent']:
+            print('SUMMERIZATION')
+            ans = summerize(query, ans)
+        file_path = os.path.join(
+            dir_pqa, experiment_config['cur_ques'], 'product_qa.jsonl')
+        
         out = {
-            "type": "P-Embedding-Retrieve",
+            "type": "ATT-Embedding-Retrieve",
             "query": query,
-            "retrieve": ans_str,
-            "rerank": [value.__str__() for value in reranker_res],
+            "retrieve": ans.__str__(),
             "top_k": k,
             "rank": rank,
         }
-
-        file_path = os.path.join(
-            dir_pqa, experiment_config['cur_ques'], 'product_qa.jsonl')
         print(f"Saving to {file_path}")
 
         try:
-            return_val = reranker_res.__str__(
-            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            # return_val = reranker_res.__str__(
+            # ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            return_val = ans.__str__()
         finally:
             write_json(out, file_path)
             return return_val
@@ -160,7 +217,9 @@ class AVectorSearchCalling(Tool):
               "rank": {"type": "integer", "description": "the top similar products after reranking, should be less than 10", "nullable": True}}
     output_type = "string"
 
-    def forward(self, query: str, k: int = 50, rank: int = 5) -> str:
+    def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k > 10:
+            k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
         experiment_name = experiment_config['name'] + "_" + \
             experiment_config['model'] + experiment_config['datetime']
@@ -169,27 +228,29 @@ class AVectorSearchCalling(Tool):
         rank = min(k, rank)
         print(f"k: {k}, rank: {rank}")
 
-        ans_str = [value.__str__() for value in ans]
-        reranker_res = reranker.rank(
-            query, ans_str, return_documents=True, top_k=rank)
-        print(f"reranker_res: {reranker_res}")
+        # ans_str = [value.__str__() for value in ans]
+        # reranker_res = reranker.rank(
+        #     query, ans_str, return_documents=True, top_k=rank)
+        # print(f"reranker_res: {reranker_res}")
 
-        out = {
-            "type": "ATT-Embedding-Retrieve",
-            "query": query,
-            "retrieve": ans_str,
-            "rerank": [value.__str__() for value in reranker_res],
-            "top_k": k,
-            "rank": rank,
-        }
-
+        if 'summerize' in experiment_config['agent']:
+            print('SUMMERIZATION')
+            ans = summerize(query, ans)
         file_path = os.path.join(
             dir_a, experiment_config['cur_ques'], 'att.jsonl')
         print(f"Saving to {file_path}")
 
+        out = {
+            "type": "ATT-Embedding-Retrieve",
+            "query": query,
+            "retrieve": ans.__str__(),
+            "top_k": k,
+            "rank": rank,
+        }
         try:
-            return_val = reranker_res.__str__(
-            ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            # return_val = reranker_res.__str__(
+            # ) if "rerank" in experiment_config['agent'] else ans.__str__()
+            return_val = ans.__str__()
         finally:
             write_json(out, file_path)
             return return_val

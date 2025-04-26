@@ -22,9 +22,11 @@
 setlocal enabledelayedexpansion
 
 :: Định nghĩa danh sách các giá trị
-set type_list= "qa" "base_description_code"
-set model_list="Qwen/Qwen2.5-14B-Instruct"
-set part_list="9"
+:: qafirst, description, qav, desv, attv, product, webtv, web, rmqa, summerize  
+:: "qafirst-qav-attv-webtv-description-summerize-rmqa" "qafirst-qav-attv-description-summerize-rmqa" "qafirst-qav-attv-webtv-description-summerize" "qafirst-qav-attv-description-summerize" 
+set type_list= "base-description"
+set model_list="gpt-4o-mini"
+set part_list= "100"
 
 :: Lấy timestamp hiện tại
 for /f "tokens=2 delims==" %%I in ('wmic OS Get localdatetime /value') do set datetime=%%I

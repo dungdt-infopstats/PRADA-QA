@@ -6,6 +6,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 
+SIG = 'user'
 
 def load_config(yaml_path):
     with open(yaml_path, "r") as stream:
@@ -34,7 +35,7 @@ def create_folder(path):
     return path
 
 def init_ques_folder(path):
-    files = ['web.jsonl', 'qa.jsonl', 'product_qa.jsonl', 'product_sql.jsonl', 'att.jsonl']
+    files = ['web.jsonl', 'qa.jsonl', 'product_qa.jsonl', 'product_sql.jsonl', 'att.jsonl', 'observation.jsonl', 'tavily.jsonl']
     for file in files:
         file_dir = os.path.join(path, file)
         with open(file_dir, 'w'):
@@ -62,12 +63,38 @@ def get_response(prompt, model="gpt-4o-mini"):
     return response
 
 
+# eval_instructions = """
+# You are given a user question on e-commerce products and a set of answers: other user answers along with the answer from an AI system.
+# There are two types of questions: yes-no and WH. Although the yes-no questions are straightforward,  it is not always the case that the answer is a simple yes or no.
+# Your task is to compare AI answers with other user answers and give the score: 1 if the AI answer match ideas / information in other user answers (including partial match), 0 if totally different, 0.5 if it is really hard to decide.
+# Remember to consider the context of the question and the product details.
+
+# Return your response in a dictionary format (JSON) with three keys: question_id, score, and comment. Only return json format, not include any character at the start of output.
+# Example
+# {{
+#     "question_id": xxxx,
+#     "score": 1
+#     "comment": "The AI answer is very similar to the user answers. It is a good answer."
+# }}
+
+# User Question:
+# - question_id: {}
+# - question_type: {}
+# - question_text: {}
+# - product_title: {}
+# - product_description: {}
+# - answer_aggregated: {}
+
+# Users answers: {}
+# AI answer: {}
+
+# Your answer:\n
+
+# """
+
 eval_instructions = """
 You are given a user question on e-commerce products and a set of answers: other user answers along with the answer from an AI system.
-There are two types of questions: yes-no and WH. Although the yes-no questions are straightforward,  it is not always the case that the answer is a simple yes or no.
-Your task is to compare AI answers with other user answers and give the score: 1 if the AI answer match ideas / information in other user answers (including partial match), 0 if totally different, 0.5 if it is really hard to decide.
-Remember to consider the context of the question and the product details.
-
+Your task is to compare AI answers with other user answers and give the score: 1 if the AI answer match ideas of majority of users, else give the score 0.
 Return your response in a dictionary format (JSON) with three keys: question_id, score, and comment. Only return json format, not include any character at the start of output.
 Example
 {{
@@ -75,36 +102,45 @@ Example
     "score": 1
     "comment": "The AI answer is very similar to the user answers. It is a good answer."
 }}
-
 User Question:
 - question_id: {}
-- question_type: {}
 - question_text: {}
-- product_title: {}
-- product_description: {}
-- answer_aggregated: {}
 
 Users answers: {}
 AI answer: {}
 
 Your answer:\n
-
 """
 
-eval_config_dir = load_config("D:\AI_CODE\MASEE\config\experiment.yaml")['eval_dir']
-eval_config = load_config(eval_config_dir)
+eval_inferfrom_des = """
+You are given a user's question about an e-commerce product and the AI model answer for that question. You will evaluate and give score to the answer: 1 - if the answer
+can be directly infered from product description (plus it's title) and directly resolve user's question, 0 otherwise. Be conscious as AI models generally hallucinate by using common sense
+or not directly answer user inquiry. Be concise, the answer deserves a score of 1 only if it correctly utilizes the product description and get what user need (not by any other medium).
 
-part = eval_config['part']
-name = eval_config['name']
 
-experiment_config_dir, experiment_config = load_experiment_config()
+Return your response in a dictionary format with three keys: question_id, score, and comment.
+Example:
+{{
+    "question_id": xxxx,
+    "score": 1
+    "comment": "The AI answer is very similar to the user answers. It is a good answer."
+}}
 
-prediction_dir = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}/{name}.jsonl"
 
-eval_path = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/eval_{experiment_config['name']}"
 
-eval_dir = os.path.join(eval_path, f'eval_{name}.json')
-def eval_scores():
+User Question:
+- question_id: {}
+- question_text: {}
+- product_title: {}
+- product_description: {}
+
+AI answer: {}
+
+Your response:\n
+"""
+
+
+def eval_scores(part, prediction_dir):
     question_df = pd.read_csv(
         f"D:/AI_CODE/MASEE/data/acs_pqa_validation_part{part}.csv")
     with jsonlines.open(prediction_dir) as reader:
@@ -117,14 +153,16 @@ def eval_scores():
 
     for row in question_df.iterrows():
         row = row[1]
-        prompt = eval_instructions.format(row.question_id, row.question_type, row.question_text,
-                                          row.item_name, row.description, row.answer_aggregated, str(row.answers), answers.get(row.question_id, ""))
+        # prompt = eval_instructions.format(row.question_id, row.question_type, row.question_text,
+        #                                   row.item_name, row.description, row.answer_aggregated, str(row.answers), answers.get(row.question_id, ""))
+        # prompt = eval_instructions.format(row.question_id, row.question_text, str(row.answers), answers.get(row.question_id))
+        prompt = eval_inferfrom_des.format(row.question_id, row.question_text, row.item_name, row.description, answers.get(row.question_id))
         print(prompt)
         scores[row.question_id] = get_response(prompt)
     return scores
 
 
-def temp_merge():
+def temp_merge(eval_dir, prediction_dir):
     with open(eval_dir, 'r') as f:
         data = json.load(f)
     question_df = pd.read_csv(
@@ -141,7 +179,7 @@ def temp_merge():
         #                          'ai_answer': ai_answers.get(row[1].question_id, "")}
         data[row[1].question_id]['question_type'] = row[1].question_type
         data[row[1].question_id]['question_text'] = row[1].question_text
-        data[row[1].question_id]['user_answers'] = row[1].answers
+        data[row[1].question_id]['product_description'] = row[1].description
         data[row[1].question_id]['ai_answer'] = ai_answers.get(row[1].question_id, "")
 
     # save to file
@@ -150,14 +188,30 @@ def temp_merge():
 
 
 if __name__ == "__main__":
-    create_folder(eval_path)
-    load_dotenv()
-    client = OpenAI()
-    scores = eval_scores()
-    # print(get_response("What is the best laptop for gaming?"))
-    sum_score = sum([score['score'] for score in scores.values()])
-    print(f"Total score: {sum_score}/{len(scores)}")
-    with open(eval_dir, "w") as f:
-        json.dump(scores, f)
-    temp_merge()
-    print("Done")
+    eval_config_dir = load_config("D:\AI_CODE\MASEE\config\experiment.yaml")['eval_dir']
+    eval_config = load_config(eval_config_dir)
+
+    parts = eval_config['part']
+    names = eval_config['name']
+    all_score = []
+    for part, name in zip(parts, names):
+        experiment_config_dir, experiment_config = load_experiment_config()
+
+        prediction_dir = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}/{name}.jsonl"
+
+        eval_path = f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/eval_{experiment_config['name']}"
+
+        eval_dir = os.path.join(eval_path, f'eval_{SIG}_{name}.json')
+        create_folder(eval_path)
+        load_dotenv()
+        client = OpenAI()
+        scores = eval_scores(part=part, prediction_dir=prediction_dir)
+        # print(get_response("What is the best laptop for gaming?"))
+        sum_score = sum([score['score'] for score in scores.values()])
+        all_score.append(sum_score)
+        print(f"Total score: {sum_score}/{len(scores)}")
+        with open(eval_dir, "w") as f:
+            json.dump(scores, f)
+        temp_merge(eval_dir=eval_dir, prediction_dir=prediction_dir)
+        print("Done")
+        print(all_score)

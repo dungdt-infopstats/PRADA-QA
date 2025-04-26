@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import yaml
 import json
-from smolagents import CodeAgent, DuckDuckGoSearchTool, MultiStepAgent, tool, ToolCallingAgent
+from smolagents import CodeAgent, DuckDuckGoSearchTool, MultiStepAgent, tool, ToolCallingAgent, VisitWebpageTool
 from smolagents.agents import ActionStep
 from smolagents.tools import Tool
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
@@ -27,16 +27,12 @@ from agents.qastorage_agent import get_qa_agent
 from agents.vectorstore import load_vector_store
 from agents.qastorage_agent import QAVectorSearchCalling, PVectorSearchCalling, AVectorSearchCalling
 from agents.reasoning_agent import ReasoningAgent
-from agents.web_tavily_agent import TavilySearch
 from smolagents import LiteLLMModel
 import os
 import jsonlines
 import datetime
 import sys
-
-# reconfig to utf-8
 sys.stdout.reconfigure(encoding='utf-8')
-
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 DATA_CHOICE = 'acs'
@@ -86,7 +82,7 @@ experiment_folder = create_folder(
 save_config(experiment_config_dir, experiment_config)
 
 create_folder(
-    f"data/{experiment_config['model']}/{experiment_config['name']}")
+    f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}")
 
 
 def parse_arguments():
@@ -120,13 +116,13 @@ def parse_arguments():
     parser.add_argument(
         "--question_df_path",
         type=str,
-        default=f"data/{DATA_CHOICE}_pqa_validation_part{experiment_config['part']}.csv",
+        default=f"D:/AI_CODE/MASEE/data/{DATA_CHOICE}_pqa_validation_part{experiment_config['part']}.csv",
         help="Path to the question dataframe CSV file",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default=f"data/{experiment_config['model']}/{experiment_config['name']}/{DATA_CHOICE}_predictions_part{experiment_config['part']}_{experiment_name}.jsonl",
+        default=f"D:/AI_CODE/MASEE/data/{experiment_config['model']}/{experiment_config['name']}/{DATA_CHOICE}_predictions_part{experiment_config['part']}_{experiment_name}.jsonl",
         help="Path to save the evaluation predictions",
     )
     return parser.parse_args()
@@ -134,10 +130,9 @@ def parse_arguments():
 
 pqa_instructions = """
 Answer a product-related question from a user on an e-commerce platform. You will be provided with a user question and product details. There are two types of questions: yes-no and WH.
-Use your knowledge of the shopping domain or available tools to answer accurately. Optimize your approach as some tools may be costly. Be concise while explaining your answer to the user.
+Use your knowledge of the shopping domain or available tools to answer accurately. Remember to use the right name of tools. Optimize your approach as some tools may be costly. Be concise while explaining your answer to the user.
 Your response will be verified by another agent. If your answer does not meet the required standards, the agent will mark it as failed. Additionally, they will provide a reason and suggestions for improvement in the Reflection section.
 Carefully analyze the Reflection section to refine your next response. Pay close attention to the reason and refinements provided.
-If the retrieval information from other tool is seem not helpful, you must call other tool to retrieve more reliable information.
 Example question:
 - Question: Will these shrink after a wash?
 - Question-type: yes-no
@@ -162,6 +157,7 @@ load_dotenv()
 
 config = load_config('path_config.yaml')
 args = parse_arguments()
+
 rv_db = SQLDatabase.from_uri(f"sqlite:///{config['data']['review_db']}")
 q_db = load_vector_store(config['data']['q_faiss_index'])
 d_db = load_vector_store(config['data']['d_faiss_index'])
@@ -186,7 +182,7 @@ def QAStorageAgent():
 
 def evaluation(
     question_df: pd.DataFrame,
-    meta_agents=None,
+    meta_agent: CodeAgent = None,
     model=None,
     save_path: str = '',
 ):
@@ -194,7 +190,7 @@ def evaluation(
     Chạy đánh giá trên question_df và lưu từng kết quả vào file .jsonl ngay sau khi hoàn thành một dòng.
     """
     list_prev_key = []
-    if 'prev_file' in experiment_config:
+    if experiment_config['part'] == 6 and 'prev_file' in experiment_config:
         print('CONTINUE')
         prev_file = experiment_config['prev_file']
         list_jsonl = load_jsonl(prev_file)
@@ -208,11 +204,9 @@ def evaluation(
     reasoning_agent = ReasoningAgent(model = reasoning_model)
 
 
-    count = 0
+
     with jsonlines.open(save_path, mode='a') as writer:
         for _, row in question_df.iterrows():
-            count += 1
-            print(count)
 
             '''
             save current question for experiment so that other file can get the current question folder
@@ -242,49 +236,47 @@ def evaluation(
             q_db.delete(ids=[row['question_id']])
             d_db.delete(ids=[row['asin']])
             
-            if 'rmqa' in experiment_config['agent']:
-                related_ques = [doc.id for doc in q_db.similarity_search("", k=q_db.index.ntotal)
-                            if doc.metadata.get("asin") == row['asin']]
+            # related_ques = [doc.id for doc in q_db.similarity_search("", k=q_db.index.ntotal)
+            #                 if doc.metadata.get("asin") == row['asin']]
 
-                print(related_ques)
-            # Xóa các câu hỏi có cùng `asin` khỏi FAISS
-            if 'rmqa' in experiment_config['agent']:
-                print('IN RMQA')
-                q_docs_backup = q_db.get_by_ids(related_ques)
-                print(
-                    f"REMOVING {len(related_ques)} questions with asin={row['asin']}")
-                if len(related_ques) != 0:
-                    q_db.delete(ids=related_ques)
-            if type(meta_agents) == list:
-                    if 'reasoning' in experiment_config['agent']:
-                        predicted_answer = reasoning_agent.loop(prompt=prompt, question=row['question_text'], meta_agents=meta_agents)
-                    else:
-                        if 'qafirst' in experiment_config['agent']:
-                            predicted_answer = reasoning_agent.loop_no_reasoning(prompt = prompt, meta_agents= meta_agents)
-                        else:
-                            prompt_3 = 'ALso, your answer must include detail evidences!'
-                            predicted_answer = meta_agents[0].run(prompt + prompt_3)
-                    dir_log = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
-                    out = {
-                        "observation": meta_agents[0].memory.steps.__str__()
-                    }
-                    file_path = os.path.join(dir_log, experiment_config['cur_ques'], 'observation.jsonl')
-                    write_json(out, file_path)
+            # print(related_ques)
+            # # Xóa các câu hỏi có cùng `asin` khỏi FAISS
+            # if related_ques:
+            #     q_docs_backup = q_db.get_by_ids(related_ques)
+            #     print(
+            #         f"REMOVING {len(related_ques)} questions with asin={row['asin']}")
+            #     q_db.delete(ids=related_ques)
+            if isinstance(meta_agent, CodeAgent):
+                if 'reasoning' in experiment_config['agent']:
+                    predicted_answer = reasoning_agent.loop(prompt=prompt, question=row['question_text'], meta_agent=meta_agent)
+                else:
+                    predicted_answer = meta_agent.run(prompt)
+                dir_log = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
+                out = {
+                    "observation": meta_agent.memory.steps.__str__()
+                }
+                file_path = os.path.join(dir_log, experiment_config['cur_ques'], 'observation.jsonl')
+                write_json(out, file_path)
             else:
-                predicted_answer = meta_agents(
+                predicted_answer = meta_agent(
                     messages=[{'content': prompt, 'role': 'user'}]
                 ).content
+
+                # empty description for verifying
+                verify = reasoning_agent.verify(question=row['question_text'], description='', answer=predicted_answer)
+                if verify['decision'] != 'pass':
+                    predicted_answer = 'FAIL: ' + predicted_answer
+                else:
+                    predicted_answer = 'PASS: ' + predicted_answer
                 
+                print(f'verify response: {verify}')
+                print(f'predicted answer: {predicted_answer}')
 
             q_db.add_documents(q_doc)
             d_db.add_documents(d_doc)
-            if 'rmqa' in experiment_config['agent']:
-                if len(q_docs_backup) != 0:
-                    q_db.add_documents(q_docs_backup)
+            # q_db.add_documents(q_docs_backup)
             # write new line
             writer.write({row['question_id']: predicted_answer})
-            q_doc = []
-            q_docs_backup = []
     print(f"Saved results to {save_path}")
 
 
@@ -307,54 +299,40 @@ def main():
     save_config(config['meta_agent'], meta_agent_config)
     # cut prod agent
     tools = []
-    tools_2 = []
     manage = []
     if experiment_config['agent'] is not None:
         if ('web' in experiment_config['agent']):
-            # web_agent = web_ag(config)
-            # manage.append(web_agent)
-            tools.append(DuckDuckGoSearchTool())
+            web_agent = web_ag(config)
+            manage.append(web_agent)
+            # tools.append(DuckDuckGoSearchTool())
             # tools.append(VisitWebpageTool())
-        if ('qav' in experiment_config['agent']):
-            tools_2.append(QAVectorSearchCalling())
-        if 'desv' in experiment_config['agent']:
-            tools_2.append(PVectorSearchCalling())
-        if 'attv' in experiment_config['agent']:
-            tools_2.append(AVectorSearchCalling())
+        if ('qa' in experiment_config['agent']):
+            tools.append(QAVectorSearchCalling())
+            tools.append(PVectorSearchCalling())
+            tools.append(AVectorSearchCalling())
         if ('product' in experiment_config['agent']):
             prod_agent = product_agent()
             tools.append(prod_agent)
-        if ('webtv' in experiment_config['agent']):
-            tools.append(TavilySearch())
     print(manage)
     print(tools)
-    meta_agent = ToolCallingAgent(
+    meta_agent = CodeAgent(
         tools=tools,
         model=load_model(
             meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
         managed_agents=manage,
-        # additional_authorized_imports=['time', 'numpy', 'pandas'],
-        planning_interval=1
+        additional_authorized_imports=['time', 'numpy', 'pandas'],
     )
-
-    meta_agent2 = ToolCallingAgent(
-        tools=tools_2,
-        model=load_model(
-            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
-        # additional_authorized_imports=['time', 'numpy', 'pandas'],
-    )
-
-    meta_agents = [meta_agent, meta_agent2]
 
     model = load_model(meta_agent_config['model-type'], meta_agent_config['model-id'],
                        meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base'])
-    model_choice = meta_agents
-    if 'base' in experiment_config['agent']:
+    model_choice = meta_agent
+    if experiment_config['agent'][0] in ['base', 'base_description']:
         model_choice = model
         print('CHOOSE TEXT MODEL')
     question_df = pd.read_csv(args.question_df_path)
     prediction = evaluation(
-        question_df, meta_agents=model_choice, save_path=args.save_path)
+        question_df, meta_agent=model_choice, save_path=args.save_path)
+
 
 
 if __name__ == "__main__":

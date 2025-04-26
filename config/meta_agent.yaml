@@ -2,6 +2,6 @@ api-base: https://tridung392004--example-vllm-openai-compatible-1-serve.modal.ru
 api-key: super-secret-key
 headless: true
 model-api: OPENAI_API_KEY
-model-id: Qwen/Qwen2.5-14B-Instruct
-model-name: null
-model-type: OpenAIServerModel
+model-id: gpt-4o-mini
+model-name: reasoning-retriever
+model-type: LiteLLMModel

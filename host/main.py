@@ -50,8 +50,8 @@ MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct"
     # how many requests can one replica handle? tune carefully!
     allow_concurrent_inputs=1000,
     # how long should we stay up with no requests?
-    # scaledown_window=15 * MINUTES,
-    container_idle_timeout = 1200,
+    scaledown_window=1200,
+    # container_idle_timeout = 1200,
     volumes={
         "/root/.cache/huggingface": hf_cache_vol,
         "/root/.cache/vllm": vllm_cache_vol,
@@ -77,7 +77,7 @@ def serve():
         "--api-key",
         API_KEY,
         "--trust-remote-code",
-        "--disable-sliding-window"
+        # "--disable-sliding-window"
     ]
 
     subprocess.Popen(" ".join(cmd), shell=True)

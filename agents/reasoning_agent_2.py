@@ -9,28 +9,24 @@ You are an evaluator responsible for assessing whether an agent's response corre
 3. The observations retrieved are relevant to the question and sufficiently support the response.  
 4. The response should be well-structured, logically sound, and persuasive.  
 
-
 Evaluation Criteria
 Pass if all conditions are met:  
 - The response correctly addresses the question without going off-topic.  
 - The response is factually accurate and explainable based on the retrieved observations.  
 - The observations align with the question's intent and provide relevant supporting data.  
-- The response is logically structured and persuasive.
-- The response includes the reason why it response this.
+- The response is logically structured and persuasive.  
 
 Fail if any of these occur:  
 - The response does not correctly answer the question or is off-topic.  
-- The response is not properly explained or lacks factual support, evidences.
+- The response is not properly explained or lacks factual support.  
 - The retrieved observations do not provide relevant information for the question.  
 - The response is misleading, incomplete, or contradicts the observations.  
 - More verification is needed, such as using external tools like web search.
-- The observation is too short or nothing or just include none, which means the system lacks of analytics.
 
 Decision Process
 1. Check if the response actually answers the user’s question.  
 2. Verify if the response is factually supported by the retrieved observations.  
 3. Ensure the observations are relevant and sufficient for answering the question.  
-4. Make sure the answer includes enough evidences.
 4. Score the response based on clarity, correctness, and factual grounding.  
 
 Scoring System:  
@@ -104,7 +100,8 @@ Answers: {}
 """
 
 refinement_prompt = """
-{} 
+{}
+Reflection: 
 - reason: {}
 - refinements: {}
 """
@@ -123,11 +120,11 @@ class ReasoningAgent:
     def forward(self, meta_agent: CodeAgent, question: str, answer: str) -> dict:
         """Evaluate if the answer sufficiently meets the observations."""
         memory = meta_agent.memory.steps
-        filtered_memory = [self.filter(step) for step in memory]
+        filtered_memory = [self.filter(step) for step in memory][:-1]
         print(filtered_memory)
         reasoning_answer = {
             'question': question,
-            'observations': filtered_memory[:-1],
+            'observations': filtered_memory,
             'answer': answer
         }
 
@@ -156,36 +153,10 @@ class ReasoningAgent:
     - cho meta agent trả lời, sau đó cho dùng reasoning đánh giá
     - nếu decision không ngon, thì feedback lại meta, kèm với reason + refine query
     """
-    def loop_no_reasoning(self, prompt, meta_agents) -> dict:
+
+    def loop(self, prompt, question, meta_agent: CodeAgent, step_num: int = 3) -> dict:
         """Run reasoning in a loop if needed (placeholder for iteration logic)."""
-        prompt_2 = 'You must call tools at the first step to get the answer! ALso, your answer must include evidences!'
-        prompt_3 = 'ALso, your answer must include detail evidences!'
-        meta_agent = meta_agents[0]
-        meta_agent0 = meta_agents[1]
-
-        final_answer = meta_agent0.run(prompt + prompt_2 + prompt_3, reset=True)
-
-        #copy memory from agent0 to agent
-        meta_agent.memory = meta_agent0.memory
-        meta_agent.state = meta_agent0.state
-        meta_agent.step_number = meta_agent0.step_number
-        final_answer = meta_agent.run(prompt, reset=False)
-        return final_answer
-
-    def loop(self, prompt, question, meta_agents, step_num: int = 3) -> dict:
-        """Run reasoning in a loop if needed (placeholder for iteration logic)."""
-        prompt_2 = 'You must call tools at the first step to get the answer!' 
-        prompt_3 = 'ALso, your answer must include detail evidences!'
-        meta_agent = meta_agents[0]
-        meta_agent0 = meta_agents[1]
-
-        final_answer = meta_agent0.run(prompt + prompt_2 + prompt_3, reset=True)
-
-        #copy memory from agent0 to agent
-        meta_agent.memory = meta_agent0.memory
-        meta_agent.state = meta_agent0.state
-        meta_agent.step_number = meta_agent0.step_number
-        # final_answer = meta_agent.run(prompt, reset = True)
+        final_answer = meta_agent.run(prompt)
 
         response = self.forward(meta_agent, question, final_answer)
         print(f'RESPONSE {0}: {response}')
@@ -196,7 +167,7 @@ class ReasoningAgent:
                 # define prompt and task
                 task_prompt = refinement_prompt.format(
                     prompt, response['reason'], response["refine_query"])
-                final_answer = meta_agent.run(task_prompt + prompt_3, reset=False)
+                final_answer = meta_agent.run(task_prompt, reset=False)
                 # task = TaskStep(task=task_prompt)
                 # # append for doing task
                 # meta_agent.memory.steps.append(task)
@@ -212,6 +183,31 @@ class ReasoningAgent:
                 if response['decision'] == 'pass':
                     break
         return final_answer
+    def verify(self, question, description, answer) -> dict:
+        reasoning_answer = {
+            'question': question,
+            'observations': description,
+            'answer': answer
+        }
+
+        prompt = self.prompt.format(reasoning_answer['question'], reasoning_answer['observations'].__str__(), reasoning_answer['answer'])
+        print(prompt)
+        messages = [{'content': prompt, 'role': 'user'}]
+
+        response = self.model(messages).content
+
+        try:
+            response_dict = json.loads(response)
+            if not all(key in response_dict for key in ["decision", "reason", "refine_query"]):
+                raise ValueError("Response missing required keys")
+        except (json.JSONDecodeError, ValueError) as e:
+            response_dict = {
+                "decision": "fail",
+                "reason": "Invalid model response format",
+                "refine_query": "Ensure the model returns a valid JSON structure"
+            }
+
+        return response_dict
 
 
 if __name__ == '__main__':

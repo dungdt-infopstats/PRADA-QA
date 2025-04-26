@@ -10,7 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from smolagents import CodeAgent, DuckDuckGoSearchTool, tool
+from smolagents import CodeAgent, DuckDuckGoSearchTool, tool, VisitWebpageTool
 from smolagents.agents import ActionStep
 from smolagents.cli import load_model
 from smolagents.memory import ActionStep, AgentMemory, PlanningStep, SystemPromptStep, TaskStep, ToolCall
@@ -90,12 +90,12 @@ def save_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
     memory_step.observations = (
         url_info if memory_step.observations is None else memory_step.observations + "\n" + url_info
     )
-    out = {
-        "type": "web",
-        "result": memory_step.__str__()
-    }
-    write_json(out, os.path.join(
-        dir_w, experiment_config['cur_ques'], 'web.jsonl'))
+    # out = {
+    #     "type": "web",
+    #     "result": memory_step.__str__()
+    # }
+    # write_json(out, os.path.join(
+    #     dir_w, experiment_config['cur_ques'], 'web.jsonl'))
     return
 
 
@@ -135,7 +135,8 @@ def close_popups() -> str:
 
 helium_instructions = """
 Use your web_search tool when you want to get Google search results.
-Then you can use helium to access websites. Don't use helium for Google search, only for navigating websites!
+Use your visit_webpage tool when you want to go to a specific page.
+Otherwise, you can use helium to access websites. Don't use helium for Google search, only for navigating websites!
 Don't bother about the helium driver, it's already managed.
 We've already ran "from helium import *"
 Then you can go to pages!
@@ -249,9 +250,22 @@ You have been provided with these additional arguments, that you can access usin
 
         if stream:
             # The steps are returned as they are executed through a generator to iterate on.
-            return self._run(task=self.task, images=images)
+            result = self._run(task=self.task, images=images)
+        else:
+            result = deque(self._run(task=self.task, images=images), maxlen=1)[0]
         # Outputs are returned only at the end as a string. We only look at the last step
-        return deque(self._run(task=self.task, images=images), maxlen=1)[0]
+
+        experiment_config_dir, experiment_config = load_experiment_config()
+        experiment_name = experiment_config['name'] + "_" + \
+            experiment_config['model'] + experiment_config['datetime']
+        dir_w = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
+        out = {
+            "type": "web",
+            "result": result.__str__()
+        }
+        write_json(out, os.path.join(
+            dir_w, experiment_config['cur_ques'], 'web.jsonl'))
+        return result
 
 
 def initialize_driver(config: dict):
@@ -269,15 +283,16 @@ def initialize_agent(config: dict):
     """Initialize the CodeAgent with the specified model."""
     model = load_model(config["model-type"],
                        config["model-id"], config["model-api"])
+    # tools.append(DuckDuckGoSearchTool())
+            # tools.append(VisitWebpageTool())
     return WebAgent(
-        tools=[DuckDuckGoSearchTool(), go_back, close_popups,
-               search_item_ctrl_f],
+        tools=[DuckDuckGoSearchTool(), VisitWebpageTool()],
         model=model,
         additional_authorized_imports=["helium"],
         step_callbacks=[save_screenshot],
-        max_steps=20,
+        max_steps=5,
         verbosity_level=2,
-        name="WebAgent",
+        name="search",
         description="""Runs searches on the Internet. Give it your query as an argument. This agent can use reasoning to analyze inputs, outputs and find the best way to get the answer.
         Please only use this agent when other methods failed, because it's extremely resource-intensive.
         """,

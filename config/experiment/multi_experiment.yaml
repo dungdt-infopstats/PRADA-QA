@@ -1,8 +1,9 @@
 agent:
-- base_description_code
-cur_ques: Tx10JQRO2GCRL8E
-datetime: _2025-03-17 18-51-22
-model: Qwen-Qwen2-5-14B-Instruct
-model-id: Qwen/Qwen2.5-14B-Instruct
-name: base_description_code
-part: 9
+- base
+- description
+cur_ques: Tx2QTHKVQ0XSZE2
+datetime: _2025-04-25 09-08-17
+model: gpt-4o-mini
+model-id: gpt-4o-mini
+name: base-description
+part: 100
