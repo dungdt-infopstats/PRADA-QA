@@ -19,16 +19,16 @@ from smolagents.tools import Tool
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
-from agents.web_agent import initialize_agent, initialize_driver
 from smolagents.cli import load_model
 from utils import load_config, save_config, create_folder, init_ques_folder, load_experiment_config, load_jsonl
-from agents.product_agent import RVSQLAgentCalling
-from agents.qastorage_agent import get_qa_agent
-from agents.vectorstore import load_vector_store
-from agents.qastorage_agent import QAVectorSearchCalling, PVectorSearchCalling, AVectorSearchCalling
-from agents.reasoning_agent import ReasoningAgent
-from agents.web_tavily_agent import TavilySearch
 from smolagents import LiteLLMModel
+
+from agents.product_agent import RVSQLAgentCalling
+# from agents.qastorage_agent import get_qa_agent
+from agents.vectorstore import load_vector_store
+from agents.reasoning_agent import ReasoningAgent
+from agents.web_agent import initialize_agent, initialize_driver
+
 import os
 import jsonlines
 import datetime
@@ -39,7 +39,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-DATA_CHOICE = 'acs'
 '''
 CONFIG
 '''
@@ -54,13 +53,13 @@ experiment_config['datetime'] = date_time
 # model_name, _type, part = sys.argv[1], sys.argv[2], int(sys.argv[3])
 
 # print(sys.argv)
-
-if len(sys.argv) != 4:
+print(sys.argv)
+if len(sys.argv) != 6:
     print("Usage: python main.py <value>")
     sys.exit(1)
 # part = int(sys.argv[1])
 # print(f'PART: {part}')
-model_name, _type, part = sys.argv[1], sys.argv[2], int(sys.argv[3])
+model_name, _type, part, data_choice, step = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
 print(model_name)
 experiment_config['model'] = model_name
 experiment_config['model'] = experiment_config['model'].replace(
@@ -69,6 +68,9 @@ experiment_config['name'] = _type
 experiment_config['agent'] = _type.split('-')
 experiment_config['part'] = part
 experiment_config['model-id'] = model_name
+experiment_config['data_choice'] = data_choice
+
+DATA_CHOICE = data_choice
 # part = experiment_config['part']
 
 save_config(experiment_config_dir, experiment_config)
@@ -108,6 +110,18 @@ def parse_arguments():
         "part",
         type=str,
         default='part',
+        nargs="?",
+    )
+    parser.add_argument(
+        "data_choice",
+        type=str,
+        default='data_choice',
+        nargs="?",
+    )
+    parser.add_argument(
+        "step",
+        type=str,
+        default='step',
         nargs="?",
     )
     parser.add_argument(
@@ -163,8 +177,13 @@ load_dotenv()
 config = load_config('path_config.yaml')
 args = parse_arguments()
 rv_db = SQLDatabase.from_uri(f"sqlite:///{config['data']['review_db']}")
-q_db = load_vector_store(config['data']['q_faiss_index'])
-d_db = load_vector_store(config['data']['d_faiss_index'])
+# q_db = load_vector_store(config['data']['q_faiss_index'])
+# d_db = load_vector_store(config['data']['d_faiss_index'])
+
+
+q_db = load_vector_store(f"D:/AI_CODE/MASEE/data/q_faiss_index_{DATA_CHOICE}")
+d_db = load_vector_store(f"D:/AI_CODE/MASEE/data/d_faiss_index_{DATA_CHOICE}")
+a_db = load_vector_store(f"D:/AI_CODE/MASEE/data/attribute_faiss_index_{DATA_CHOICE}")
 
 def web_ag(config):
     global driver
@@ -180,8 +199,8 @@ def product_agent():
     return RVSQLAgentCalling()
 
 
-def QAStorageAgent():
-    return get_qa_agent()
+# def QAStorageAgent():
+#     return get_qa_agent()
 
 
 def evaluation(
@@ -256,26 +275,38 @@ def evaluation(
                 if len(related_ques) != 0:
                     q_db.delete(ids=related_ques)
             if type(meta_agents) == list:
-                    if 'reasoning' in experiment_config['agent']:
-                        predicted_answer = reasoning_agent.loop(prompt=prompt, question=row['question_text'], meta_agents=meta_agents)
-                    else:
-                        if 'qafirst' in experiment_config['agent']:
-                            predicted_answer = reasoning_agent.loop_no_reasoning(prompt = prompt, meta_agents= meta_agents)
+                    try:
+                        if 'reasoning' in experiment_config['agent']:
+                            predicted_answer = reasoning_agent.loop(prompt=prompt, question=row['question_text'], meta_agents=meta_agents)
                         else:
-                            prompt_3 = 'ALso, your answer must include detail evidences!'
-                            predicted_answer = meta_agents[0].run(prompt + prompt_3)
-                    dir_log = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
-                    out = {
-                        "observation": meta_agents[0].memory.steps.__str__()
-                    }
+                            if 'qafirst' in experiment_config['agent']:
+                                predicted_answer = reasoning_agent.loop_no_reasoning(prompt = prompt, meta_agents= meta_agents)
+                            else:
+                                prompt_3 = 'ALso, your answer must include detail evidences!'
+                                predicted_answer = meta_agents[0].run(prompt + prompt_3)
+                        dir_log = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
+                        out = {
+                            "observation": meta_agents[0].memory.steps.__str__()
+                        }
+                    except:
+                        if 'reasoning' in experiment_config['agent']:
+                            predicted_answer = reasoning_agent.loop(prompt=prompt, question=row['question_text'], meta_agents=meta_agents)
+                        else:
+                            if 'qafirst' in experiment_config['agent']:
+                                predicted_answer = reasoning_agent.loop_no_reasoning(prompt = prompt, meta_agents= meta_agents)
+                            else:
+                                prompt_3 = 'ALso, your answer must include detail evidences!'
+                                predicted_answer = meta_agents[0].run(prompt + prompt_3)
+                        dir_log = os.path.abspath(os.path.join("log", experiment_name, str(experiment_config['part'])))
+                        out = {
+                            "observation": meta_agents[0].memory.steps.__str__()
+                        }
                     file_path = os.path.join(dir_log, experiment_config['cur_ques'], 'observation.jsonl')
                     write_json(out, file_path)
             else:
                 predicted_answer = meta_agents(
                     messages=[{'content': prompt, 'role': 'user'}]
-                ).content
-                
-
+                ).content        
             q_db.add_documents(q_doc)
             d_db.add_documents(d_doc)
             if 'rmqa' in experiment_config['agent']:
@@ -294,6 +325,8 @@ def write_json(data, path):
 
 
 def main():
+    from agents.qastorage_agent import QAVectorSearchCalling, PVectorSearchCalling, AVectorSearchCalling
+    from agents.web_tavily_agent import TavilySearch
     # sql_agent_rv = create_sql_agent(
     #     llm=ChatOpenAI(model="gpt-4o-mini", temperature=0),
     #     db=rv_db,
@@ -317,10 +350,13 @@ def main():
             # tools.append(VisitWebpageTool())
         if ('qav' in experiment_config['agent']):
             tools_2.append(QAVectorSearchCalling())
+            tools.append(QAVectorSearchCalling())
         if 'desv' in experiment_config['agent']:
             tools_2.append(PVectorSearchCalling())
+            tools.append(PVectorSearchCalling())
         if 'attv' in experiment_config['agent']:
             tools_2.append(AVectorSearchCalling())
+            tools.append(AVectorSearchCalling())
         if ('product' in experiment_config['agent']):
             prod_agent = product_agent()
             tools.append(prod_agent)
@@ -328,23 +364,57 @@ def main():
             tools.append(TavilySearch())
     print(manage)
     print(tools)
-    meta_agent = ToolCallingAgent(
-        tools=tools,
-        model=load_model(
-            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
-        managed_agents=manage,
-        # additional_authorized_imports=['time', 'numpy', 'pandas'],
-        planning_interval=1
-    )
+    if 'plan' in experiment_config['agent']:
+        meta_agent = ToolCallingAgent(
+            tools=tools,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            managed_agents=manage,
+            # additional_authorized_imports=['time', 'numpy', 'pandas'],
+            planning_interval=1,
+        )
 
-    meta_agent2 = ToolCallingAgent(
-        tools=tools_2,
-        model=load_model(
-            meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
-        # additional_authorized_imports=['time', 'numpy', 'pandas'],
-    )
+        meta_agent2 = ToolCallingAgent(
+            tools=tools_2,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            # additional_authorized_imports=['time', 'numpy', 'pandas'],
+        )
+    elif 'plancode' in experiment_config['agent']:
+        meta_agent = CodeAgent(
+            tools=tools,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            managed_agents=manage,
+            additional_authorized_imports=['time', 'numpy', 'pandas'],
+            planning_interval=1
+        )   
 
+        meta_agent2 = CodeAgent(
+            tools=tools_2,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            additional_authorized_imports=['time', 'numpy', 'pandas'],
+        )
+    else:
+        meta_agent = CodeAgent(
+            tools=tools,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            managed_agents=manage,
+            additional_authorized_imports=['time', 'numpy', 'pandas'],
+        )   
+
+        meta_agent2 = CodeAgent(
+            tools=tools_2,
+            model=load_model(
+                meta_agent_config['model-type'], meta_agent_config['model-id'], meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base']),
+            additional_authorized_imports=['time', 'numpy', 'pandas'],
+        )
     meta_agents = [meta_agent, meta_agent2]
+
+    print(f'SET MAX STEP: {step}')
+    meta_agents[0].max_steps = int(step)
 
     model = load_model(meta_agent_config['model-type'], meta_agent_config['model-id'],
                        meta_agent_config['model-api'], meta_agent_config['api-key'], meta_agent_config['api-base'])

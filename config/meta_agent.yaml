@@ -1,7 +1,6 @@
-api-base: https://tridung392004--example-vllm-openai-compatible-1-serve.modal.run/v1
+api-base: https://agents-pqa--example-vllm-openai-compatible-1-serve.modal.run/v1
 api-key: super-secret-key
 headless: true
 model-api: OPENAI_API_KEY
 model-id: gpt-4o-mini
-model-name: reasoning-retriever
 model-type: LiteLLMModel

@@ -24,10 +24,14 @@ setlocal enabledelayedexpansion
 :: Định nghĩa danh sách các giá trị
 :: qafirst, description, qav, desv, attv, product, webtv, web, rmqa, summerize  
 :: "qafirst-qav-attv-webtv-description-summerize-rmqa" "qafirst-qav-attv-description-summerize-rmqa" "qafirst-qav-attv-webtv-description-summerize" "qafirst-qav-attv-description-summerize" 
-set type_list= "base-description"
-set model_list="gpt-4o-mini"
-set part_list= "100"
 
+@REM "llama3.3:70b-instruct-q8_0"
+@REM  "dolls" "car"
+set type_list= "qafirst-qav-attv-description-summerize"
+set model_list= "gpt-4o-mini"
+set part_list= "100"
+set choice= "car"
+set step= "3" "5" "9"
 :: Lấy timestamp hiện tại
 for /f "tokens=2 delims==" %%I in ('wmic OS Get localdatetime /value') do set datetime=%%I
 set timestamp=%datetime:~0,4%-%datetime:~4,2%-%datetime:~6,2%_%datetime:~8,2%-%datetime:~10,2%-%datetime:~12,2%
@@ -36,14 +40,18 @@ set timestamp=%datetime:~0,4%-%datetime:~4,2%-%datetime:~6,2%_%datetime:~8,2%-%d
 for %%t in (%type_list%) do (
     for %%m in (%model_list%) do (
         for %%p in (%part_list%) do (
-            set model_name=%%~m
-            set model_name=!model_name::=_!
-            set model_name=!model_name:.=_!
-            set model_name=!model_name:/=_!
-            set log_file=acs_log_!model_name!_%%t_%%p_%timestamp%.txt
-            echo log_file: "!log_file!"
-            echo Running: python main.py %%~m %%t %%p >> !log_file!
-            python main.py %%~m %%t %%p >> "!log_file!" 2>&1
+            for %%c in (%choice%) do (
+                for %%s in (%step%) do (
+                    set model_name=%%~m
+                    set model_name=!model_name::=_!
+                    set model_name=!model_name:.=_!
+                    set model_name=!model_name:/=_!
+                    set log_file=%%c_log_!model_name!_%%t_%%p_%%s_%timestamp%.txt
+                    echo log_file: "!log_file!"
+                    echo Running: python main.py %%~m %%t %%p %%c %%s >> !log_file!
+                    python main.py %%~m %%t %%p %%c %%s >> "!log_file!" 2>&1
+                )
+            )
         )
     )
 )

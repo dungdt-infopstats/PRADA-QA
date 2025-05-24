@@ -73,15 +73,21 @@ def summerize(user_query, message):
     ]
     model = OpenAIServerModel(
         api_key="super-secret-key",
-        api_base="https://nzavjmj--example-vllm-openai-compatible-1-serve.modal.run/v1",
+        api_base="https://dungit2204--example-vllm-openai-compatible-1-serve.modal.run/v1",
         model_id="Qwen/Qwen2.5-14B-Instruct",
     )
     response = model(messages=messages).content
     return response
 
-q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
-d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
-a_db = load_vector_store("D:/AI_CODE/MASEE/data/attribute_faiss_index")
+# q_db = load_vector_store("D:/AI_CODE/MASEE/data/q_faiss_index")
+# d_db = load_vector_store("D:/AI_CODE/MASEE/data/d_faiss_index")
+# a_db = load_vector_store("D:/AI_CODE/MASEE/data/attribute_faiss_index")
+experiment_config_dir, experiment_config = load_experiment_config()
+
+DATA_CHOICE = experiment_config['data_choice']
+q_db = load_vector_store(f"D:/AI_CODE/MASEE/data/q_faiss_index_{DATA_CHOICE}")
+d_db = load_vector_store(f"D:/AI_CODE/MASEE/data/d_faiss_index_{DATA_CHOICE}")
+a_db = load_vector_store(f"D:/AI_CODE/MASEE/data/attribute_faiss_index_{DATA_CHOICE}")
 reranker = CrossEncoder(
     "jinaai/jina-reranker-v1-turbo-en", trust_remote_code=True)
 
@@ -97,6 +103,10 @@ class QAVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k is None:
+            k = 5
+        if rank is None:
+            rank = 5
         if k > 10:
             k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
@@ -167,6 +177,10 @@ class PVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k is None:
+            k = 5
+        if rank is None:
+            rank = 5
         if k > 10:
             k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
@@ -218,6 +232,10 @@ class AVectorSearchCalling(Tool):
     output_type = "string"
 
     def forward(self, query: str, k: int = 5, rank: int = 5) -> str:
+        if k is None:
+            k = 5
+        if rank is None:
+            rank = 5
         if k > 10:
             k = 10
         experiment_config_dir, experiment_config = load_experiment_config()
