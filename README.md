@@ -367,6 +367,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Examples**: Review `run_demo.py` for complete workflow
 - **Testing**: See `TESTING_STATUS.md` for test coverage
 
----
 
-*This README covers the new modular architecture. Legacy files have been moved to the `legacy/` folder and are ignored by git. The system is now clean, well-structured, and ready for production use.*
