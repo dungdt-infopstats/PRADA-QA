@@ -1,6 +1,32 @@
-# MASEE - Multi-Agent System for E-commerce Evaluation
+# PRADA-QA: Product QA with Multi-Agent Planning and Dynamic Knowledge Retrieval
 
-MASEE is a sophisticated multi-agent system designed for evaluating e-commerce product questions using various AI models and retrieval strategies. The system provides a comprehensive framework for running experiments, analyzing results, and comparing different agent configurations.
+## Overview
+Large Language Model (LLM)-based autonomous agents have shown strong capabilities in decision-making and handling complex tasks. However, public research on applying multi-agent systems to **Product Question Answering (PQA)**—a crucial area in modern e-commerce—remains limited.
+
+**PRADA-QA** is a framework designed to enhance the user experience through **multi-agent collaboration**, enabling dynamic information retrieval from diverse sources to respond to user queries accurately.
+
+## Key Features
+- **Multi-Agent Collaboration**: Agents work together to dynamically retrieve and integrate information for more accurate product-related responses.
+- **Adaptive Planning Module**: Guides agents’ objectives adaptively, improving task fulfillment efficiency while minimizing redundant steps and operational costs.
+- **Reward Model-Based Evaluation**: Uses a reward model (commonly applied in RLHF for LLMs) as a proxy for human preferences, ensuring user-centric quality in evaluation.
+- **Generalizable Framework**: While designed for PQA, the evaluation and planning strategies may extend to other open-ended QA scenarios.
+
+## Evaluation
+- We employ a reward model-based evaluation strategy to capture user-centric quality.
+- Experiments were conducted across **three distinct domains** to validate the framework’s effectiveness.
+- Results show that **PRADA-QA outperforms traditional approaches**, delivering more accurate and contextually appropriate responses for PQA.
+
+## Highlights
+- 🚀 Improves task fulfillment efficiency  
+- 🛒 Tailored for Product Question Answering in e-commerce  
+- 🤖 Built on LLM-powered multi-agent collaboration  
+- ✅ Evaluated using reward models as human preference proxies  
+- 📊 Demonstrates superior performance across multiple domains  
+
+---
+
+PRADA-QA sets a new direction for leveraging LLM-based multi-agent systems in e-commerce and beyond.
+
 
 ## 🌟 Features
 
