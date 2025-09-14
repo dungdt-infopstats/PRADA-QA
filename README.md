@@ -23,8 +23,6 @@ Large Language Model (LLM)-based autonomous agents have shown strong capabilitie
 - ✅ Evaluated using reward models as human preference proxies  
 - 📊 Demonstrates superior performance across multiple domains  
 
----
-
 PRADA-QA sets a new direction for leveraging LLM-based multi-agent systems in e-commerce and beyond.
 
 ## 🏗️ Project Structure
@@ -367,4 +365,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Examples**: Review `run_demo.py` for complete workflow
 - **Testing**: See `TESTING_STATUS.md` for test coverage
 
-
+---
