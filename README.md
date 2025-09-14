@@ -27,16 +27,6 @@ Large Language Model (LLM)-based autonomous agents have shown strong capabilitie
 
 PRADA-QA sets a new direction for leveraging LLM-based multi-agent systems in e-commerce and beyond.
 
-
-## 🌟 Features
-
-- **Multi-Agent Architecture**: Support for different agent types including base models, web agents, and reasoning agents
-- **Flexible Configuration**: YAML-based configuration system for experiments and models
-- **Batch Processing**: Run multiple experiments with different parameters automatically
-- **Custom Smolagents**: Integrated with custom-modified smolagents framework
-- **Comprehensive Testing**: Full test suite with unit, integration, and performance tests
-- **Results Analysis**: Built-in tools for analyzing and comparing experiment results
-
 ## 🏗️ Project Structure
 
 ```
