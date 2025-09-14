@@ -4,9 +4,9 @@ agent:
 - attv
 - description
 - summerize
-cur_ques: Tx1EDMRMLNII8JJ
+cur_ques: Tx1ZWSNYJAQ6M21
 data_choice: car
-datetime: _2025-05-23 00-52-57
+datetime: _2025-08-17 17-13-28
 model: gpt-4o-mini
 model-id: gpt-4o-mini
 name: qafirst-qav-attv-description-summerize

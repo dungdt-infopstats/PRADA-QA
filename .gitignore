@@ -1,11 +1,184 @@
-.env
+# MASEE Project .gitignore
+
+# Python
 __pycache__/
-data
-masee
-Chinook.db
-log
-tests
-*.ipynb
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Legacy code and files (old structure)
+legacy/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+test_results/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+masee_env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# MASEE Specific Files
+
+# Experiment logs and results
+*_log_*.txt
+*_log_*.log
 *.jsonl
-*.json
-*.txt
+log/
+logs/
+results/
+
+# Data files (keep structure, ignore content)
+data/*.csv
+data/*.json
+data/*.jsonl
+!data/README.md
+!data/*demo*.csv
+
+# Archive and temporary directories
+archive/
+temp/
+tmp/
+*.tmp
+
+# Configuration with sensitive data
+config/local_*.yaml
+config/production_*.yaml
+.secrets
+*.key
+*.pem
+
+# Model files and vector stores
+*.faiss
+*.index
+*.pkl
+*.pickle
+models/
+vector_stores/
+faiss_index*/
+*_faiss_index*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large data files
+*.h5
+*.hdf5
+*.parquet
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+
+# Demo and test artifacts
+demo_*.json
+test_*.json
+*demo*.json
+*.demo
+
+# Virtual environment (custom smolagents)
+# Keep the masee folder structure but ignore certain contents
+masee/Lib/site-packages/*/
+masee/Scripts/
+masee/pyvenv.cfg
+!masee/Lib/site-packages/smolagents/
+!masee/Lib/site-packages/smolagents/**
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Temporary files
+*.temp
+*.temporary
+
+
+# Ignore tất cả trong thư mục data/ và subfolder
+data/*
+
+.claude/*
+.github/*
+
+.txt
+log_text/*
+
+tests/*
+config/modal.yaml
+config/modal.yaml
+config/modal.yaml
