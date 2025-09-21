@@ -17,15 +17,15 @@ Large Language Model (LLM)-based autonomous agents have shown strong capabilitie
 - Results show that **PRADA-QA outperforms traditional approaches**, delivering more accurate and contextually appropriate responses for PQA.
 
 ## Highlights
-- 🚀 Improves task fulfillment efficiency  
-- 🛒 Tailored for Product Question Answering in e-commerce  
-- 🤖 Built on LLM-powered multi-agent collaboration  
-- ✅ Evaluated using reward models as human preference proxies  
-- 📊 Demonstrates superior performance across multiple domains  
+- Improves task fulfillment efficiency  
+- Tailored for Product Question Answering in e-commerce  
+- Built on LLM-powered multi-agent collaboration  
+- Evaluated using reward models as human preference proxies  
+- Demonstrates superior performance across multiple domains  
 
 PRADA-QA sets a new direction for leveraging LLM-based multi-agent systems in e-commerce and beyond.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 MASEE/
@@ -53,7 +53,7 @@ MASEE/
 └── legacy/                # Old code structure (ignored)
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -101,7 +101,7 @@ python src/main.py gpt-4o-mini base 100 demo 3
 ./scripts/monitor_experiments.sh status
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Experiment Configuration
 
@@ -123,7 +123,7 @@ model-api: 'OPENAI_API_KEY'    # API key environment variable
 api-base: 'https://api.openai.com/v1'  # API base URL
 ```
 
-## 🤖 Agent Types
+## Agent Types
 
 ### Base Agent
 - **Purpose**: Simple text-only evaluation
@@ -148,7 +148,7 @@ api-base: 'https://api.openai.com/v1'  # API base URL
 - **Use case**: Specification-based questions
 - **Performance**: Good balance of speed and accuracy
 
-## 📊 Data Formats
+## Data Formats
 
 ### Input Data (CSV)
 ```csv
