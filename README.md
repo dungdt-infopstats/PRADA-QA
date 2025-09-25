@@ -123,31 +123,6 @@ model-api: 'OPENAI_API_KEY'    # API key environment variable
 api-base: 'https://api.openai.com/v1'  # API base URL
 ```
 
-## Agent Types
-
-### Base Agent
-- **Purpose**: Simple text-only evaluation
-- **Use case**: Direct question-answer processing
-- **Performance**: Fastest processing time
-- **Best for**: Simple factual questions
-
-### Web Agent
-- **Purpose**: Uses web search for additional context
-- **Features**: Tavily integration for real-time information
-- **Use case**: Current product information, reviews
-- **Performance**: Moderate speed, high accuracy
-
-### Reasoning Agent
-- **Purpose**: Multi-step reasoning approach
-- **Features**: Advanced prompt engineering, chain-of-thought
-- **Use case**: Complex analytical questions
-- **Performance**: Slower but more thorough
-
-### Description Agent
-- **Purpose**: Uses product descriptions for context
-- **Use case**: Specification-based questions
-- **Performance**: Good balance of speed and accuracy
-
 ## Data Formats
 
 ### Input Data (CSV)
